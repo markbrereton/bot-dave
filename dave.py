@@ -60,7 +60,7 @@ def main():
                 elif venue == "STORG Northern Clubhouse":
                     channel = "#storg-north"
                 else:
-                    channel = "#small_council"
+                    channel = "#announcements"
                 chat.new_rsvp(', '.join(newcomers), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
                 events[event_id]["participants"] += newcomers
             else:
