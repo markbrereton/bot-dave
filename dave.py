@@ -15,6 +15,7 @@ group_id = environ.get('MEETUP_GROUP_ID')
 slack_token = environ["SLACK_API_TOKEN"]
 trello_key = environ["TRELLO_API_KEY"]
 trello_token = environ["TRELLO_TOKEN"]
+team_name = environ["TRELLO_TEAM"]
 
 
 def main():
@@ -40,7 +41,7 @@ def main():
                                datetime.fromtimestamp(event_date).strftime('%A %B %d %H:%M'),
                                event["venue"]["name"],
                                event["event_url"])
-                board.create(event["name"])
+                board.create(event["name"], team_name=team_name)
                 events[event_id] = event
                 events[event_id]["participants"] = []
 
