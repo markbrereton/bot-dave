@@ -74,7 +74,7 @@ def main():
                     chat.new_rsvp(', '.join(cancels), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
                     events[event_id]["participants"] -= cancels
             else:
-                logger.info("No newcomers for {}".format(event["name"]))
+                logger.info("No changes for {}".format(event["name"]))
         logger.debug("Saving events")
         ds.store_many_events(events)
         logger.info("Done checking")

@@ -28,7 +28,7 @@ class Slack(object):
     def new_rsvp(self, names, response, event, spots, channel="#dungeon_lab"):
         attachment = [{
             "pretext": "New RSVP",
-            # "color": "#36a64f",
+            "color": "#36a64f",
             "text": "{} replied {} for the {}\n{} spots left".format(names, response, event, spots)
         }]
         self._announcement(attachment, channel=channel)
