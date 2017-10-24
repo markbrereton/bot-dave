@@ -21,7 +21,7 @@ team_name = environ["TRELLO_TEAM"]
 def main():
     storg = MeetupGroup(meetup_key, group_id)
     chat = Slack(slack_token)
-    board = TrelloBoard(api_key=trello_key, token=trello_token)
+    trello = TrelloBoard(api_key=trello_key, token=trello_token)
     ds = Store()
 
     while True:
@@ -32,6 +32,7 @@ def main():
         for event in storg.events:
             event_id = event["id"]
             newcomers = []
+            cancels = []
 
             # Check for new event
             if event_id not in events.keys():
@@ -41,7 +42,7 @@ def main():
                                datetime.fromtimestamp(event_date).strftime('%A %B %d %H:%M'),
                                event["venue"]["name"],
                                event["event_url"])
-                board.create(event["name"], team_name=team_name)
+                trello.create_board(event["name"], team_name=team_name)
                 events[event_id] = event
                 events[event_id]["participants"] = []
 
@@ -49,11 +50,15 @@ def main():
             for rsvp in storg.rsvps(event_id):
                 member_name = rsvp["member"]["name"]
                 member_id = rsvp["member"]["member_id"]
+                board_name = event["name"]
                 if member_name not in events[event_id]["participants"] and rsvp["response"] == "yes":
                     newcomers.append(member_name)
-                    board.add_rsvp(name=member_name, member_id=member_id, board_name=event["name"])
+                    trello.add_rsvp(name=member_name, member_id=member_id, board_name=board_name)
+                elif member_name in events[event_id]["participants"] and rsvp["response"] == "no":
+                    trello.cancel_rsvp(member_id, board_name=board_name)
+                    cancels.append(member_name)
 
-            if newcomers:
+            if newcomers or cancels:
                 spots_left = int(event["rsvp_limit"]) - int(event["yes_rsvp_count"])
                 venue = rsvp["venue"]["name"]
                 if venue == "STORG Clubhouse":
@@ -61,9 +66,13 @@ def main():
                 elif venue == "STORG Northern Clubhouse":
                     channel = "#storg-north"
                 else:
-                    channel = "#announcements"
-                chat.new_rsvp(', '.join(newcomers), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
-                events[event_id]["participants"] += newcomers
+                    channel = None
+                if newcomers:
+                    chat.new_rsvp(', '.join(newcomers), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
+                    events[event_id]["participants"] += newcomers
+                if cancels:
+                    chat.new_rsvp(', '.join(cancels), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
+                    events[event_id]["participants"] -= cancels
             else:
                 logger.info("No newcomers for {}".format(event["name"]))
         logger.debug("Saving events")

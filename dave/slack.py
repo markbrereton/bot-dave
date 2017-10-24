@@ -15,7 +15,7 @@ class Slack(object):
             attachments=attachment
         )
 
-    def new_event(self, name, date, venue, url, channel="#small_council"):
+    def new_event(self, name, date, venue, url, channel="#announcements"):
         attachment = [{
             "pretext": "Woohoo! We've got a new event coming up!",
             "color": "#36a64f",
@@ -25,7 +25,7 @@ class Slack(object):
         }]
         self._announcement(attachment, channel=channel)
 
-    def new_rsvp(self, names, response, event, spots, channel):
+    def new_rsvp(self, names, response, event, spots, channel="#dungeon_lab"):
         attachment = [{
             "pretext": "New RSVP",
             # "color": "#36a64f",

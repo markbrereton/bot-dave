@@ -34,7 +34,7 @@ class TrelloBoard(object):
         if label:
             return label[0]
 
-    def create(self, board_name, team_name=None):
+    def create_board(self, board_name, team_name=None):
         template = [b for b in self.boards if b.name == "Meetup Template"][0]
         boards = [b for b in self.boards if b.name == board_name]
         org_id= self._org_id(team_name=team_name)
