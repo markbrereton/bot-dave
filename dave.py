@@ -68,10 +68,10 @@ def main():
                 else:
                     channel = None
                 if newcomers:
-                    chat.new_rsvp(', '.join(newcomers), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
+                    chat.new_rsvp(', '.join(newcomers), "yes", rsvp["event"]["name"], spots_left, channel)
                     events[event_id]["participants"] += newcomers
                 if cancels:
-                    chat.new_rsvp(', '.join(cancels), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
+                    chat.new_rsvp(', '.join(cancels), "no", rsvp["event"]["name"], spots_left, channel)
                     events[event_id]["participants"] = [p for p in events[event_id]["participants"] if p not in cancels]
             else:
                 logger.info("No changes for {}".format(event["name"]))
