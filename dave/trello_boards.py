@@ -1,16 +1,30 @@
 #!/usr/bin/env python
 
 from trello import TrelloClient
+import json
 
 
 class TrelloBoard(object):
     def __init__(self, api_key, token):
         self.tc = TrelloClient(api_key=api_key, token=token)
 
-
     @property
     def boards(self):
         return self.tc.list_boards()
+
+    @property
+    def addressbook(self):
+        book = {}
+        board = [b for b in self.boards if b.name == "Address Book"][0]
+        lists = board.list_lists()
+        for list in lists:
+            for card in list.list_cards():
+                try:
+                    info = json.loads(card.desc)
+                    book[info["id"]] = {"name": card.name, "slack": info["slack"]}
+                except json.decoder.JSONDecodeError:
+                    pass
+        return book
 
     def _org_id(self, team_name):
         orgs = self.tc.list_organizations()
@@ -34,6 +48,12 @@ class TrelloBoard(object):
         if label:
             return label[0]
 
+    def _add_label(self, member_id, board_name, label_name):
+        card = self._locate_member(member_id, board_name)
+        label = self._locate_label(label_name, board_name)
+        if card and label:
+            card.add_label(label)
+
     def create_board(self, board_name, team_name=None):
         template = [b for b in self.boards if b.name == "Meetup Template"][0]
         boards = [b for b in self.boards if b.name == board_name]
@@ -51,12 +71,12 @@ class TrelloBoard(object):
             rsvp_list.add_card(name=name, desc=member_id)
 
     def cancel_rsvp(self, member_id, board_name):
-        card = self._locate_member(member_id, board_name)
-        canceled = self._locate_label("Canceled", board_name)
-        if card:
-            card.add_label(canceled)
+        self._add_label(member_id, board_name, "Canceled")
+
+    def mark_inchannel(self, member_id, board_name):
+        self._add_label(member_id, board_name, "InSlackChannel")
 
 
 if __name__ == "__main__":
-    b = TrelloBoard("***REMOVED***", "***REMOVED***")
-    print(b._org_id(None))
+    tb = TrelloBoard("***REMOVED***", "***REMOVED***")
+    print(tb.addressbook)

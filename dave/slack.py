@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from slackclient import SlackClient
+import json
 
 
 class Slack(object):
@@ -32,3 +33,12 @@ class Slack(object):
             "text": "{} replied {} for the {}\n{} spots left".format(names, response, event, spots)
         }]
         self._announcement(attachment, channel=channel)
+
+    def members_of_channel(self, channel_id):
+        info = self.sc.api_call(
+            "conversations.members",
+            channel=channel_id
+        )
+        info = json.loads(info)
+        if info['ok']:
+            return info['members']

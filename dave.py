@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+# TODO:
+# RTM Documentation https://api.slack.com/rtm
+# asyncio documentation http://chriskiehl.com/article/parallelism-in-one-line/
+# http://cheat.readthedocs.io/en/latest/python/asyncio.html
+# https://stackoverflow.com/questions/42279675/syncronous-sleep-into-asyncio-coroutine
+# https://snarky.ca/how-the-heck-does-async-await-work-in-python-3-5/
+
 from datetime import datetime
 from os import environ
 from time import sleep
@@ -18,7 +25,7 @@ trello_token = environ["TRELLO_TOKEN"]
 team_name = environ["TRELLO_TEAM"]
 
 
-def main():
+def announcements():
     storg = MeetupGroup(meetup_key, group_id)
     chat = Slack(slack_token)
     trello = TrelloBoard(api_key=trello_key, token=trello_token)
@@ -72,7 +79,7 @@ def main():
                     events[event_id]["participants"] += newcomers
                 if cancels:
                     chat.new_rsvp(', '.join(cancels), rsvp["response"], rsvp["event"]["name"], spots_left, channel)
-                    events[event_id]["participants"] -= cancels
+                    events[event_id]["participants"] = [p for p in events[event_id]["participants"] if p not in cancels]
             else:
                 logger.info("No changes for {}".format(event["name"]))
         logger.debug("Saving events")
@@ -82,4 +89,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    announcements()
