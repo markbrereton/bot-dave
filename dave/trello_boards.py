@@ -55,8 +55,3 @@ class TrelloBoard(object):
         canceled = self._locate_label("Canceled", board_name)
         if card:
             card.add_label(canceled)
-
-
-if __name__ == "__main__":
-    b = TrelloBoard("***REMOVED***", "***REMOVED***")
-    print(b._org_id(None))
