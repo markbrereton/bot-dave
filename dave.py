@@ -36,6 +36,7 @@ def main():
 
             # Check for new event
             if event_id not in events.keys():
+                logger.debug("New event found")
                 event_date = int(event["time"]) / 1000
 
                 chat.new_event(event["name"],
@@ -68,11 +69,15 @@ def main():
                 else:
                     channel = None
                 if newcomers:
+                    logger.debug("Newcomers found")
                     chat.new_rsvp(', '.join(newcomers), "yes", rsvp["event"]["name"], spots_left, channel)
                     events[event_id]["participants"] += newcomers
+                    logger.debug("Participant list: ", events[event_id]["participants"])
                 if cancels:
+                    logger.debug("Cancellations found")
                     chat.new_rsvp(', '.join(cancels), "no", rsvp["event"]["name"], spots_left, channel)
                     events[event_id]["participants"] = [p for p in events[event_id]["participants"] if p not in cancels]
+                    logger.debug("Participant list: ", events[event_id]["participants"])
             else:
                 logger.info("No changes for {}".format(event["name"]))
         logger.debug("Saving events")
