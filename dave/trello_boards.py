@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from trello import TrelloClient
+from dave.log import logger
 
 
 class TrelloBoard(object):
@@ -51,7 +52,10 @@ class TrelloBoard(object):
             rsvp_list.add_card(name=name, desc=member_id)
 
     def cancel_rsvp(self, member_id, board_name):
+        logger.debug("Cancelling RSVP for members id {} at {}".format(member_id, board_name))
         card = self._locate_member(member_id, board_name)
+        logger.debug("Card for member id {} is {}".format(member_id, card))
         canceled = self._locate_label("Canceled", board_name)
+        logger.debug("Canceled tag is {}".format(canceled))
         if card:
             card.add_label(canceled)
