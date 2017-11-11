@@ -20,11 +20,11 @@ class TrelloBoard(object):
                 return org.id
 
     def _locate_member(self, member_id, board_name):
+        member_id = str(member_id)
         board = [b for b in self.boards if b.name == board_name][0]
-        lists = board.list_lists()
 
-        for list in lists:
-            for card in list.list_cards():
+        for l in board.list_lists():
+            for card in l.list_cards():
                 if card.desc == member_id:
                     return card
 
