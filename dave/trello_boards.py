@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import yaml
+from functools import lru_cache
 from trello import TrelloClient
 from dave.log import logger
 
@@ -8,18 +9,22 @@ from dave.log import logger
 class TrelloBoard(object):
     def __init__(self, api_key, token):
         self.tc = TrelloClient(api_key=api_key, token=token)
+        self._ab_cache = {}
 
+    @lru_cache(maxsize=128)
     def _org_id(self, team_name):
         orgs = self.tc.list_organizations()
         for org in orgs:
             if org.name == team_name:
                 return org.id
 
+    @lru_cache(maxsize=128)
     def _locate_board(self, board_name):
         board = [b for b in self.boards if b.name == board_name]
         if board:
             return board[0]
 
+    @lru_cache(maxsize=128)
     def _locate_member(self, member_id, board_name):
         member_id = str(member_id)
         board = self._locate_board(board_name)
@@ -29,6 +34,7 @@ class TrelloBoard(object):
                 if card.desc == member_id:
                     return card
 
+    @lru_cache(maxsize=128)
     def _locate_label(self, label_name, board_name):
         board = self._locate_board(board_name)
         label = [l for l in board.get_labels() if l.name == label_name]

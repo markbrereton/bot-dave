@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import multiprocessing as mp
+import random
 from datetime import datetime
 from os import environ
 from time import sleep
@@ -129,6 +130,22 @@ class Worker(mp.Process):
         self.task_queue = task_queue
         self.result_queue = result_queue
         self.bot = bot
+        self.greeting_keywords = ("hello", "hi", "greetings", "sup", "what's up",)
+        self.greeting_responses = ["Hey!", "*nods*", "Oh hi there!", "*waves*"]
+
+    def _check_for_greeting(self, sentence):
+        """If any of the words in the user's input was a greeting, return a greeting response"""
+        word = sentence.split(' ')[0]
+        if word.lower().rstrip('!') in self.greeting_keywords:
+            return random.choice(self.greeting_responses)
+
+    def _check_next_meetup(self):
+        event = list(dave.known_events.keys())[0]
+        participants = dave.known_events[event]["participants"]
+        event_time = dave.known_events[event]["time"] / 1000
+        date = datetime.fromtimestamp(event_time).strftime('%A %B %d %H:%M')
+        name = dave.known_events[event]["name"]
+        return "Our next meetup is *{}*, on *{}* and there are *{}* people joining:\n{}".format(name, date, len(participants), ', '.join(participants))
 
     def run(self):
         proc_name = self.name
@@ -138,8 +155,14 @@ class Worker(mp.Process):
             command, channel = next_task
             if command.startswith("help"):
                 response = "I can't do much yet, but I will soon!"
+            elif command.lower() == "are you there?":
+                response = "I'm here :relaxed:"
+            elif command.lower().startswith("next meetup"):
+                response = self._check_next_meetup()
+            elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
+                response = "Anytime :relaxed:"
             else:
-                response = command
+                response = self._check_for_greeting(command)
             self.bot.respond(response, channel)
 
 
