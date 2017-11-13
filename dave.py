@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import multiprocessing as mp
 from datetime import datetime
 from os import environ
 from time import sleep
@@ -13,7 +14,7 @@ from dave.trello_boards import TrelloBoard
 sleep_time = int(environ.get('CHECK_TIME', '600'))
 
 
-class WorkerDave(object):
+class Dave(object):
 
     def __init__(self):
         meetup_key = environ.get('MEETUP_API_KEY')
@@ -21,9 +22,10 @@ class WorkerDave(object):
         slack_token = environ["SLACK_API_TOKEN"]
         trello_key = environ["TRELLO_API_KEY"]
         trello_token = environ["TRELLO_TOKEN"]
+        bot_id = environ.get("BOT_ID")
         self.team_name = environ["TRELLO_TEAM"]
         self.storg = MeetupGroup(meetup_key, group_id)
-        self.chat = Slack(slack_token)
+        self.chat = Slack(slack_token, bot_id)
         self.trello = TrelloBoard(api_key=trello_key, token=trello_token)
         self.ds = Store()
         self.current_events = self.storg.events
@@ -103,18 +105,55 @@ class WorkerDave(object):
             self._check_if_new_event(event)
             self._check_new_rsvp(event)
         logger.info("Done checking")
+        self.save_events()
+
+    def monitor_events(self, sleep_time=600):
+        while True:
+            self.check_events()
+            sleep(sleep_time)
 
     def save_events(self):
         logger.debug("Saving events")
         self.ds.store_events(self.known_events)
 
+    def read_chat(self, tasks):
+        self.chat.rtm(tasks)
 
-def check_events():
-    with WorkerDave() as dave:
-        dave.check_events()
+    def respond(self, response, channel):
+        self.chat.message(response, channel)
+
+
+class Worker(mp.Process):
+    def __init__(self, task_queue, result_queue, bot):
+        mp.Process.__init__(self)
+        self.task_queue = task_queue
+        self.result_queue = result_queue
+        self.bot = bot
+
+    def run(self):
+        proc_name = self.name
+        while True:
+            next_task = self.task_queue.get()
+            logger.debug('{}: {}'.format(proc_name, next_task))
+            command, channel = next_task
+            if command.startswith("help"):
+                response = "I can't do much yet, but I will soon!"
+            else:
+                response = command
+            self.bot.respond(response, channel)
 
 
 if __name__ == "__main__":
-    while True:
-        check_events()
-        sleep(sleep_time)
+    dave = Dave()
+
+    tasks = mp.JoinableQueue()
+    results = mp.Queue()
+
+    worker = Worker(tasks, results, dave)
+    reader = mp.Process(target=dave.read_chat, args=(tasks,))
+    monitor = mp.Process(target=dave.monitor_events)
+
+    worker.start()
+    reader.start()
+    monitor.start()
+
