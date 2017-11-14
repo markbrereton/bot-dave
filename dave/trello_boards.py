@@ -72,6 +72,7 @@ class TrelloBoard(object):
 
         if not self._locate_member(member_id, board_name):
             rsvp_list.add_card(name=name, desc=member_id)
+        logger.debug("add_rsvp: ", self._locate_member.cache_info())
 
     def cancel_rsvp(self, member_id, board_name):
         logger.debug("Cancelling RSVP for members id {} at {}".format(member_id, board_name))
@@ -81,6 +82,26 @@ class TrelloBoard(object):
         logger.debug("Canceled tag is {}".format(canceled))
         if card:
             card.add_label(canceled)
+        logger.debug("cancel_rsvp", self._locate_member.cache_info())
+        logger.debug("cancel_rsvp", self._locate_label.cache_info())
 
-    def add_address(self, member_name, member_id):
+    def add_addressbook_entry(self, member_name, member_id):
         pass
+
+    @lru_cache(maxsize=128)
+    def addressbook_entry_by_name(self, member_name):
+        board = self._locate_board("Address Book")
+        for l in board.list_lists():
+            for card in l.list_cards():
+                if card.name == member_name:
+                    return yaml.load(card.desc)
+
+    @lru_cache(maxsize=128)
+    def addressbook_entry_by_id(self, member_id):
+        board = self._locate_board("Address Book")
+        for l in board.list_lists():
+            for card in l.list_cards():
+                info = yaml.load(card.desc)
+                if info:
+                    if info['id'] == member_id:
+                        return info

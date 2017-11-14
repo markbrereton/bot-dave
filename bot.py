@@ -15,8 +15,7 @@ from dave.trello_boards import TrelloBoard
 sleep_time = int(environ.get('CHECK_TIME', '600'))
 
 
-class Dave(object):
-
+class Bot(object):
     def __init__(self):
         meetup_key = environ.get('MEETUP_API_KEY')
         group_id = environ.get('MEETUP_GROUP_ID')
@@ -95,7 +94,8 @@ class Dave(object):
             if cancels:
                 logger.debug("Cancellations found")
                 self.chat.new_rsvp(', '.join(cancels), "no", event["name"], spots_left, channel)
-                self.known_events[event_id]["participants"] = [p for p in self.known_events[event_id]["participants"] if p not in cancels]
+                self.known_events[event_id]["participants"] = [p for p in self.known_events[event_id]["participants"] if
+                                                               p not in cancels]
                 logger.debug("Participant list: {}".format(', '.join(self.known_events[event_id]["participants"])))
         else:
             logger.info("No changes for {}".format(event["name"]))
@@ -123,6 +123,12 @@ class Dave(object):
     def respond(self, response, channel):
         self.chat.message(response, channel)
 
+    def next_meetup(self):
+        self.current_events.sort(key=lambda d: d["time"])
+        next_id = self.current_events[0]["id"]
+        return self.known_events[next_id]
+
+
 
 class Worker(mp.Process):
     def __init__(self, task_queue, result_queue, bot):
@@ -130,8 +136,14 @@ class Worker(mp.Process):
         self.task_queue = task_queue
         self.result_queue = result_queue
         self.bot = bot
-        self.greeting_keywords = ("hello", "hi", "greetings", "sup", "what's up",)
-        self.greeting_responses = ["Hey!", "*nods*", "Oh hi there!", "*waves*"]
+        self.greeting_keywords = ("hello", "hi", "greetings", "sup", "yo")
+        self.greeting_responses = ["Hey!", "*nods*", "Oh hi there!", "*waves*", "greetings"]
+        self.none_responses = [
+            "Huh?",
+            "I have no idea what that means.",
+            "I'd like to add you to my professional network on LinkedIn",
+            "..."
+        ]
 
     def _check_for_greeting(self, sentence):
         """If any of the words in the user's input was a greeting, return a greeting response"""
@@ -139,13 +151,35 @@ class Worker(mp.Process):
         if word.lower().rstrip('!') in self.greeting_keywords:
             return random.choice(self.greeting_responses)
 
-    def _check_next_meetup(self):
-        event = list(dave.known_events.keys())[0]
-        participants = dave.known_events[event]["participants"]
-        event_time = dave.known_events[event]["time"] / 1000
-        date = datetime.fromtimestamp(event_time).strftime('%A %B %d %H:%M')
-        name = dave.known_events[event]["name"]
-        return "Our next meetup is *{}*, on *{}* and there are *{}* people joining:\n{}".format(name, date, len(participants), ', '.join(participants))
+    def _natural_join(self, lst):
+        resp = ', '.join(lst)
+        resp = ' and'.join(resp.rsplit(',', 1))
+        return resp
+
+    def _next_event(self):
+        next_meetup = dave.next_meetup()
+        participants = next_meetup["participants"]
+        event_time = next_meetup["time"] / 1000
+        date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
+        name = next_meetup["name"]
+        return "Our next event is *{}*, on *{}* and there are *{}* people joining:\n{}".format(name, date,
+                                                                                               len(participants),
+                                                                                               self._natural_join(
+                                                                                                   participants))
+
+    def _all_events(self):
+        msgs = ["Here are our next events."]
+        for event in dave.known_events.values():
+            participants = event["participants"]
+            event_time = event["time"] / 1000
+            date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
+            name = event["name"]
+            msg = "*{}*, on *{}* with *{}* people joining:\n{}".format(name, date,
+                                                                       len(participants),
+                                                                       self._natural_join(
+                                                                           participants))
+            msgs.append(msg)
+        return '\n'.join(msgs)
 
     def run(self):
         proc_name = self.name
@@ -154,20 +188,22 @@ class Worker(mp.Process):
             logger.debug('{}: {}'.format(proc_name, next_task))
             command, channel = next_task
             if command.startswith("help"):
-                response = "I can't do much yet, but I will soon!"
+                response = "Hold on tight! I'm coming."
             elif command.lower() == "are you there?":
                 response = "I'm here :relaxed:"
-            elif command.lower().startswith("next meetup"):
-                response = self._check_next_meetup()
+            elif "next meetup" in command.lower() or "next event" in command.lower() and "events" not in command.lower():
+                response = self._next_event()
+            elif "all meetups" in command.lower() or "all events" in command.lower() or "next events" in command.lower():
+                response = self._all_events()
             elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
                 response = "Anytime :relaxed:"
             else:
-                response = self._check_for_greeting(command)
+                response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(self.none_responses)
             self.bot.respond(response, channel)
 
 
 if __name__ == "__main__":
-    dave = Dave()
+    dave = Bot()
 
     tasks = mp.JoinableQueue()
     results = mp.Queue()
