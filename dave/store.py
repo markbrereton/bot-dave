@@ -33,7 +33,7 @@ class Store(object):
         resp = self.cur.fetchone()
         return json.dumps(resp)
 
-    def retrieve_many_events(self, event_ids):
+    def retrieve_events(self, event_ids):
         resp = {}
         event_ids = ["$${}$$".format(e) for e in event_ids]
         sql = "SELECT event_id, data FROM events WHERE event_id IN ({});".format(','.join(event_ids))
@@ -43,7 +43,7 @@ class Store(object):
             resp[event_id] = json.loads(data)
         return resp
 
-    def store_many_events(self, events):
+    def store_events(self, events):
         for event_id, data in events.items():
             self.store_event(event_id, data)
 
