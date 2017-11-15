@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from os import environ
 from time import sleep
+from fuzzywuzzy import process
 
 from dave.log import logger
 from dave.meetup import MeetupGroup
@@ -41,6 +42,10 @@ class Bot(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.save_events()
+
+    @property
+    def event_names(self):
+        return [e["name"] for e in self.known_events.values()]
 
     def _check_if_new_event(self, event):
         # Check for new event
@@ -189,10 +194,19 @@ class Worker(mp.Process):
             msgs.append(msg)
         return '\n'.join(msgs)
 
-    def _tables_info(self):
-        msgs = ["Available tables:"]
-        next_meetup = dave.next_meetup()
-        event_name = next_meetup["name"]
+    def _tables_info(self, request=None):
+        msgs = ["Available tables for "]
+        if not request:
+            next_meetup = dave.next_meetup()
+            event_name = next_meetup["name"]
+        else:
+            requested_event = request.split('table status')[-1]
+            logger.debug("Requested {}".format(requested_event))
+            events = dave.event_names
+            logger.debug("Events {}".format(events))
+            event_name = process.extractOne(requested_event, events)[0]
+        logger.debug("Chosen {}".format(event_name))
+        msgs[0] += "*{}*".format(event_name)
         table_info = self.bot.tables(event_name)
         for table, details in table_info.items():
             info = details["info"].replace('\n', '\n>')
@@ -213,7 +227,7 @@ class Worker(mp.Process):
             elif "all meetups" in command.lower() or "all events" in command.lower() or "next events" in command.lower():
                 response = self._all_events_info()
             elif "table status" in command.lower():
-                response = self._tables_info()
+                response = self._tables_info(request=command)
             elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
                 response = "Anytime :relaxed:"
             else:
