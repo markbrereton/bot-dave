@@ -152,7 +152,7 @@ class Worker(mp.Process):
             return random.choice(self.greeting_responses)
 
     def _natural_join(self, lst):
-        resp = ', '.join(lst)
+        resp = ',\n'.join(lst)
         resp = ' and'.join(resp.rsplit(',', 1))
         return resp
 
