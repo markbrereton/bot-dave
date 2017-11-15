@@ -8,6 +8,8 @@ requests = "*"
 py-trello = "*"
 psycopg2 = "*"
 pyyaml = "*"
+fuzzywuzzy = "*"
+python-Levenshtein = "*"
 
 [requires]
 python_version = "3.5"
