@@ -2,6 +2,7 @@
 
 import multiprocessing as mp
 import random
+import json
 from datetime import datetime
 from os import environ
 from time import sleep
@@ -129,15 +130,14 @@ class Bot(object):
         return self.known_events[next_id]
 
 
-
 class Worker(mp.Process):
     def __init__(self, task_queue, result_queue, bot):
         mp.Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
         self.bot = bot
-        self.greeting_keywords = ("hello", "hi", "greetings", "sup", "yo")
-        self.greeting_responses = ["Hey!", "*nods*", "Oh hi there!", "*waves*", "greetings"]
+        with open("resources/phrases.json", "r") as phrases:
+            self.phrases = json.loads(phrases.read())
         self.none_responses = [
             "Huh?",
             "I have no idea what that means.",
@@ -147,9 +147,11 @@ class Worker(mp.Process):
 
     def _check_for_greeting(self, sentence):
         """If any of the words in the user's input was a greeting, return a greeting response"""
+        greeting_keywords = self.phrases["requests"]["greetings"]
+        greeting_responses = self.phrases["responses"]["greetings"]
         word = sentence.split(' ')[0]
-        if word.lower().rstrip('!') in self.greeting_keywords:
-            return random.choice(self.greeting_responses)
+        if word.lower().rstrip('!') in greeting_keywords:
+            return random.choice(greeting_responses)
 
     def _natural_join(self, lst):
         resp = ',\n'.join(lst)
@@ -183,9 +185,9 @@ class Worker(mp.Process):
 
     def run(self):
         proc_name = self.name
+        unknown_responses = self.phrases["responses"]["unknown"]
         while True:
             next_task = self.task_queue.get()
-            logger.debug('{}: {}'.format(proc_name, next_task))
             command, channel = next_task
             if command.startswith("help"):
                 response = "Hold on tight! I'm coming."
@@ -198,7 +200,7 @@ class Worker(mp.Process):
             elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
                 response = "Anytime :relaxed:"
             else:
-                response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(self.none_responses)
+                response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(unknown_responses)
             self.bot.respond(response, channel)
 
 

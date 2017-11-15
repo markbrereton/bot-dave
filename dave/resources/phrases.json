@@ -1,0 +1,29 @@
+{
+  "responses": {
+    "greetings":[
+      "Hey!",
+      "*nods*",
+      "Hi there",
+      "*waves*",
+      "Greetings"
+    ],
+    "unknown": [
+      "Huh?",
+      "I have no idea what that means",
+      "I'd like to add you to my professional network on LinkedInn",
+      "...",
+      "*is confused*"
+    ]
+  },
+  "requests":
+  {
+    "greetings": [
+      "hello",
+      "hi",
+      "hey",
+      "greetings",
+      "sup",
+      "yo"
+    ]
+  }
+}
