@@ -129,6 +129,12 @@ class Bot(object):
         next_id = self.current_events[0]["id"]
         return self.known_events[next_id]
 
+    def tables(self, event_name):
+        return self.trello.tables(event_name)
+
+    def table(self, event_name, table_title):
+        return self.trello.table(event_name, table_title)
+
 
 class Worker(mp.Process):
     def __init__(self, task_queue, result_queue, bot):
@@ -136,7 +142,7 @@ class Worker(mp.Process):
         self.task_queue = task_queue
         self.result_queue = result_queue
         self.bot = bot
-        with open("resources/phrases.json", "r") as phrases:
+        with open("dave/resources/phrases.json", "r") as phrases:
             self.phrases = json.loads(phrases.read())
         self.none_responses = [
             "Huh?",
@@ -158,7 +164,7 @@ class Worker(mp.Process):
         resp = ' and'.join(resp.rsplit(',', 1))
         return resp
 
-    def _next_event(self):
+    def _next_event_info(self):
         next_meetup = dave.next_meetup()
         participants = next_meetup["participants"]
         event_time = next_meetup["time"] / 1000
@@ -169,7 +175,7 @@ class Worker(mp.Process):
                                                                                                self._natural_join(
                                                                                                    participants))
 
-    def _all_events(self):
+    def _all_events_info(self):
         msgs = ["Here are our next events."]
         for event in dave.known_events.values():
             participants = event["participants"]
@@ -183,8 +189,17 @@ class Worker(mp.Process):
             msgs.append(msg)
         return '\n'.join(msgs)
 
+    def _tables_info(self):
+        msgs = ["Available tables:"]
+        next_meetup = dave.next_meetup()
+        event_name = next_meetup["name"]
+        table_info = self.bot.tables(event_name)
+        for table, details in table_info.items():
+            info = details["info"].replace('\n', '\n>')
+            msgs.append("*{}*\n>{}\nJoining: *{}*".format(table.upper(), info, ', '.join(details["members"])))
+        return '\n\n'.join(msgs)
+
     def run(self):
-        proc_name = self.name
         unknown_responses = self.phrases["responses"]["unknown"]
         while True:
             next_task = self.task_queue.get()
@@ -194,9 +209,11 @@ class Worker(mp.Process):
             elif command.lower() == "are you there?":
                 response = "I'm here :relaxed:"
             elif "next meetup" in command.lower() or "next event" in command.lower() and "events" not in command.lower():
-                response = self._next_event()
+                response = self._next_event_info()
             elif "all meetups" in command.lower() or "all events" in command.lower() or "next events" in command.lower():
-                response = self._all_events()
+                response = self._all_events_info()
+            elif "table status" in command.lower():
+                response = self._tables_info()
             elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
                 response = "Anytime :relaxed:"
             else:

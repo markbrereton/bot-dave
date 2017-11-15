@@ -85,8 +85,39 @@ class TrelloBoard(object):
         logger.debug("cancel_rsvp", self._locate_member.cache_info())
         logger.debug("cancel_rsvp", self._locate_label.cache_info())
 
-    def add_addressbook_entry(self, member_name, member_id):
-        pass
+    def tables(self, board_name):
+        tables = {}
+        board = self._locate_board(board_name)
+        non_table_list = ["RSVPs", "In Chat (No Group)"]
+        info_card = None
+        if not board:
+            return None
+        table_list = [t for t in board.list_lists() if t.name not in non_table_list]
+        for table in table_list:
+            names = []
+            title = table.name
+            for card in table.list_cards():
+                if card.name != "Info" and not card.labels:
+                    names.append(card.name)
+                elif card.name == "Info":
+                    info_card = card
+                elif card.labels:
+                    for label in card.labels:
+                        if label.name == "GM":
+                            names.append(card.name + " (GM)")
+                        else:
+                            names.append(card.name)
+            if info_card:
+                info = info_card.desc
+            else:
+                info = ""
+            tables[title] = {}
+            tables[title]["members"] = names
+            tables[title]["info"] = info
+        return tables
+
+    def table(self, board_name, list_name):
+        return self.tables(board_name)[list_name]
 
     @lru_cache(maxsize=128)
     def addressbook_entry_by_name(self, member_name):
