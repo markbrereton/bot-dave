@@ -164,8 +164,11 @@ class Worker(mp.Process):
         if word.lower().rstrip('!') in greeting_keywords:
             return random.choice(greeting_responses)
 
-    def _natural_join(self, lst):
-        resp = ',\n'.join(lst)
+    @staticmethod
+    def _natural_join(lst, separator=None):
+        if not separator:
+            separator = '\n'
+        resp = ',{}'.format(separator).join(lst)
         resp = ' and'.join(resp.rsplit(',', 1))
         return resp
 

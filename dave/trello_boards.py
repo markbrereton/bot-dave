@@ -11,6 +11,21 @@ class TrelloBoard(object):
         self.tc = TrelloClient(api_key=api_key, token=token)
         self._ab_cache = {}
 
+    @property
+    def boards(self):
+        return self.tc.list_boards()
+
+    @property
+    def addressbook(self):
+        board = self._board("Address Book")
+        resp = {}
+        for l in board.list_lists():
+            for card in l.list_cards():
+                info = yaml.load(card.desc)
+                if info:
+                    resp[info["id"]] = {"name": card.name, "slack": info["slack"]}
+        return resp
+
     @lru_cache(maxsize=128)
     def _org_id(self, team_name):
         orgs = self.tc.list_organizations()
@@ -19,15 +34,15 @@ class TrelloBoard(object):
                 return org.id
 
     @lru_cache(maxsize=128)
-    def _locate_board(self, board_name):
+    def _board(self, board_name):
         board = [b for b in self.boards if b.name == board_name]
         if board:
             return board[0]
 
     @lru_cache(maxsize=128)
-    def _locate_member(self, member_id, board_name):
+    def _member(self, member_id, board_name):
         member_id = str(member_id)
-        board = self._locate_board(board_name)
+        board = self._board(board_name)
 
         for l in board.list_lists():
             for card in l.list_cards():
@@ -35,59 +50,43 @@ class TrelloBoard(object):
                     return card
 
     @lru_cache(maxsize=128)
-    def _locate_label(self, label_name, board_name):
-        board = self._locate_board(board_name)
+    def _label(self, label_name, board_name):
+        board = self._board(board_name)
         label = [l for l in board.get_labels() if l.name == label_name]
-
         if label:
             return label[0]
 
     def create_board(self, board_name, team_name=None):
-        template = [b for b in self.boards if b.name == "Meetup Template"][0]
-        board = self._locate_board(board_name)
+        template = self._board("Meetup Template")
+        board = self._board(board_name)
         org_id= self._org_id(team_name=team_name)
 
         if not board:
             self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id)
 
-    @property
-    def boards(self):
-        return self.tc.list_boards()
-
-    @property
-    def addressbook(self):
-        board = self._locate_board("Address Book")
-        book = {}
-        for l in board.list_lists():
-            for card in l.list_cards():
-                info = yaml.load(card.desc)
-                if info:
-                    book[info["id"]] = {"name": card.name, "slack": info["slack"]}
-        return book
-
     def add_rsvp(self, name, member_id, board_name):
         member_id = str(member_id)
-        board = [b for b in self.boards if b.name == board_name][0]
+        board = self._board(board_name)
         rsvp_list = board.list_lists()[0]
 
-        if not self._locate_member(member_id, board_name):
+        if not self._member(member_id, board_name):
             rsvp_list.add_card(name=name, desc=member_id)
-        logger.debug("add_rsvp: ", self._locate_member.cache_info())
+        logger.debug("add_rsvp: ", self._member.cache_info())
 
     def cancel_rsvp(self, member_id, board_name):
         logger.debug("Cancelling RSVP for members id {} at {}".format(member_id, board_name))
-        card = self._locate_member(member_id, board_name)
+        card = self._member(member_id, board_name)
         logger.debug("Card for member id {} is {}".format(member_id, card))
-        canceled = self._locate_label("Canceled", board_name)
+        canceled = self._label("Canceled", board_name)
         logger.debug("Canceled tag is {}".format(canceled))
         if card:
             card.add_label(canceled)
-        logger.debug("cancel_rsvp", self._locate_member.cache_info())
-        logger.debug("cancel_rsvp", self._locate_label.cache_info())
+        logger.debug("cancel_rsvp", self._member.cache_info())
+        logger.debug("cancel_rsvp", self._label.cache_info())
 
     def tables(self, board_name):
         tables = {}
-        board = self._locate_board(board_name)
+        board = self._board(board_name)
         non_table_list = ["RSVPs", "In Chat (No Group)"]
         info_card = None
         if not board:
@@ -121,7 +120,7 @@ class TrelloBoard(object):
 
     @lru_cache(maxsize=128)
     def addressbook_entry_by_name(self, member_name):
-        board = self._locate_board("Address Book")
+        board = self._board("Address Book")
         for l in board.list_lists():
             for card in l.list_cards():
                 if card.name == member_name:
@@ -129,7 +128,7 @@ class TrelloBoard(object):
 
     @lru_cache(maxsize=128)
     def addressbook_entry_by_id(self, member_id):
-        board = self._locate_board("Address Book")
+        board = self._board("Address Book")
         for l in board.list_lists():
             for card in l.list_cards():
                 info = yaml.load(card.desc)
