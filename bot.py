@@ -147,14 +147,11 @@ class Worker(mp.Process):
         self.task_queue = task_queue
         self.result_queue = result_queue
         self.bot = bot
+        slack_token = environ["SLACK_API_TOKEN"]
+        bot_id = environ.get("BOT_ID")
+        self.chat = Slack(slack_token, bot_id)
         with open("dave/resources/phrases.json", "r") as phrases:
             self.phrases = json.loads(phrases.read())
-        self.none_responses = [
-            "Huh?",
-            "I have no idea what that means.",
-            "I'd like to add you to my professional network on LinkedIn",
-            "..."
-        ]
 
     def _check_for_greeting(self, sentence):
         """If any of the words in the user's input was a greeting, return a greeting response"""
@@ -197,30 +194,33 @@ class Worker(mp.Process):
             msgs.append(msg)
         return '\n'.join(msgs)
 
-    def _tables_info(self, request=None):
-        msgs = ["Available tables for "]
+    def _tables_info(self, channel, request=None):
+        logger.debug("Got {} and {}".format(channel, request))
         if not request:
-            next_meetup = dave.next_meetup()
-            event_name = next_meetup["name"]
-        else:
-            requested_event = request.split('table status')[-1]
-            logger.debug("Requested {}".format(requested_event))
-            events = dave.event_names
-            logger.debug("Events {}".format(events))
-            event_name = process.extractOne(requested_event, events)[0]
+            request = ' '.join(channel.split("_"))
+
+        logger.debug("Request {}".format(request))
+        logger.debug("Channel {}".format(channel))
+        logger.debug("Requested {}".format(request))
+        events = dave.event_names
+        logger.debug("Events {}".format(events))
+        event_name = process.extractOne(request, events)[0]
         logger.debug("Chosen {}".format(event_name))
+        msgs = ["Available tables for "]
         msgs[0] += "*{}*".format(event_name)
         table_info = self.bot.tables(event_name)
+
         for table, details in table_info.items():
             info = details["info"].replace('\n', '\n>')
             msgs.append("*{}*\n>{}\nJoining: *{}*".format(table.upper(), info, ', '.join(details["members"])))
+
         return '\n\n'.join(msgs)
 
     def run(self):
         unknown_responses = self.phrases["responses"]["unknown"]
         while True:
             next_task = self.task_queue.get()
-            command, channel = next_task
+            command, channel_id = next_task
             if command.startswith("help"):
                 response = "Hold on tight! I'm coming."
             elif command.lower() == "are you there?":
@@ -230,12 +230,12 @@ class Worker(mp.Process):
             elif "all meetups" in command.lower() or "all events" in command.lower() or "next events" in command.lower():
                 response = self._all_events_info()
             elif "table status" in command.lower():
-                response = self._tables_info(request=command)
+                response = self._tables_info(channel=self.chat.channel_name(channel_id), request=command.split('table status')[-1])
             elif command.lower().startswith("thanks") or command.lower().startswith("thank you"):
                 response = "Anytime :relaxed:"
             else:
                 response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(unknown_responses)
-            self.bot.respond(response, channel)
+            self.bot.respond(response, channel_id)
 
 
 if __name__ == "__main__":

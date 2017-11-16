@@ -8,11 +8,20 @@ from dave.log import logger
 
 class TrelloBoard(object):
     def __init__(self, api_key, token):
+        """Creates a TrelloBoard object
+
+        :param api_key: (str) Your Trello api key https://trello.com/1/appKey/generate
+        :param token:  (str) Your Trello token
+        """
         self.tc = TrelloClient(api_key=api_key, token=token)
         self._ab_cache = {}
 
     @property
     def boards(self):
+        """All the boards that can be accessed
+
+        :return: (Board) list of Board
+        """
         return self.tc.list_boards()
 
     @property
@@ -28,6 +37,11 @@ class TrelloBoard(object):
 
     @lru_cache(maxsize=128)
     def _org_id(self, team_name):
+        """Get the id of a Trello team
+
+        :param team_name:
+        :return:
+        """
         orgs = self.tc.list_organizations()
         for org in orgs:
             if org.name == team_name:

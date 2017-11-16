@@ -15,6 +15,24 @@ class Slack(object):
         self.sc = SlackClient(slack_token)
         self.at_bot = "<@" + bot_id + ">"
 
+    @property
+    def _channels(self):
+        """Gets all channels
+
+        :return: (list) List of channel objects (dicts)
+        """
+        return self.sc.api_call("channels.list")["channels"]
+
+    def channel_name(self, channel_id):
+        """Get the name of the channel with id :channel_:
+
+        :param channel_id: (str)
+        :return: (str) The channel name
+        """
+        for channel in self._channels:
+            if channel["id"] == channel_id:
+                return channel["name"]
+
     def _announcement(self, attachment, channel="#small_council"):
         self.sc.api_call(
             "chat.postMessage",
