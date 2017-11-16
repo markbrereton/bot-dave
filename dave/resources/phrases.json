@@ -1,10 +1,12 @@
 {
   "responses": {
     "greetings":[
-      "Hey!",
+      "Hey",
       "*nods*",
       "Hi there",
       "*waves*",
+      "Hello",
+      "Hi",
       "Greetings"
     ],
     "unknown": [

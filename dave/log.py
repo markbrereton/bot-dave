@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+A simple module setting up the Python logger for logging to stdout
+"""
 
 import logging
 
