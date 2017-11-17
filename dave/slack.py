@@ -53,8 +53,12 @@ class Slack(object):
             for output in output_list:
                 if output and 'text' in output and self.at_bot in output['text']:
                     # return text after the @ mention, whitespace removed
-                    return output['text'].split(self.at_bot)[1].strip().lower(), \
-                           output['channel']
+                    command = ' '.join([t for t in output["text"].split(self.at_bot) if t != self.at_bot])
+                    return command, output["channel"]
+                elif output and "channel" in output and "text" in output and output["channel"] == "D7MSNRHU4" and output["user"] != "U7NMQERJA":
+                    logger.debug(output)
+                    # return None, None
+                    return output["text"], output["channel"]
         return None, None
 
     def new_event(self, event_name, date, venue, url, channel="#announcements"):

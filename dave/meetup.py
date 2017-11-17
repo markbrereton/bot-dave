@@ -16,7 +16,7 @@ class MeetupGroup(object):
         self.group_id = group_id
 
     @property
-    def events(self):
+    def upcoming_events(self):
         """Gets all upcoming events for the MeetupGroup
         https://secure.meetup.com/meetup_api/console/?path=/2/events
 
