@@ -21,9 +21,10 @@ class Bot(object):
         trello_key = environ["TRELLO_API_KEY"]
         trello_token = environ["TRELLO_TOKEN"]
         bot_id = environ.get("BOT_ID")
+        bot_channel_id = environ.get("BOT_CHANNEL_ID")
         self.team_name = environ["TRELLO_TEAM"]
         self.storg = MeetupGroup(meetup_key, group_id)
-        self.chat = Slack(slack_token, bot_id)
+        self.chat = Slack(slack_token, bot_id, bot_channel_id)
         self.trello = TrelloBoard(api_key=trello_key, token=trello_token)
         self.ds = Store()
         if self.storg.upcoming_events:
