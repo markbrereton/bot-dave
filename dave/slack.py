@@ -6,7 +6,7 @@ from time import sleep
 
 
 class Slack(object):
-    def __init__(self, slack_token, bot_id):
+    def __init__(self, slack_token, bot_id, bot_channel_id):
         """Creates a Slack connection object
 
         :param slack_token: (str) Your Slack API key
@@ -14,6 +14,8 @@ class Slack(object):
         """
         self.sc = SlackClient(slack_token)
         self.at_bot = "<@" + bot_id + ">"
+        self.bot_id = bot_id
+        self.bot_channel_id = bot_channel_id
 
     @property
     def _channels(self):
@@ -55,10 +57,12 @@ class Slack(object):
                     # return text after the @ mention, whitespace removed
                     command = ' '.join([t for t in output["text"].split(self.at_bot) if t != self.at_bot])
                     return command, output["channel"]
-                elif output and "channel" in output and "text" in output and output["channel"] == "D7MSNRHU4" and output["user"] != "U7NMQERJA":
+                elif output and "channel" in output and "text" in output\
+                        and output["channel"] == self.bot_channel_id and output["user"] != self.bot_id:
                     logger.debug(output)
-                    # return None, None
                     return output["text"], output["channel"]
+                else:
+                    logger.debug(output)
         return None, None
 
     def new_event(self, event_name, date, venue, url, channel="#announcements"):
