@@ -21,7 +21,8 @@ class Worker(mp.Process):
         self.bot = bot
         slack_token = environ["SLACK_API_TOKEN"]
         bot_id = environ.get("BOT_ID")
-        self.chat = Slack(slack_token, bot_id)
+        bot_channel_id = environ.get("BOT_CHANNEL_ΙD")
+        self.chat = Slack(slack_token, bot_id, bot_channel_id)
         with open("dave/resources/phrases.json", "r") as phrases:
             self.phrases = json.loads(phrases.read())
 
