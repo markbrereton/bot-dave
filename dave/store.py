@@ -38,8 +38,8 @@ class Store(object):
         event_ids = ["$${}$$".format(e) for e in event_ids]
         sql = "SELECT event_id, data FROM events WHERE event_id IN ({});".format(','.join(event_ids))
         self.cur.execute(sql)
-        all = self.cur.fetchall()
-        for event_id, data in all:
+        all_events = self.cur.fetchall()
+        for event_id, data in all_events:
             resp[event_id] = json.loads(data)
         return resp
 
@@ -51,8 +51,8 @@ class Store(object):
         resp = {}
         sql = "SELECT event_id, data FROM events;"
         self.cur.execute(sql)
-        all = self.cur.fetchall()
+        all_events = self.cur.fetchall()
         self.conn.commit()
-        for event_id, data in all:
+        for event_id, data in all_events:
             resp[event_id] = json.loads(data)
         return resp

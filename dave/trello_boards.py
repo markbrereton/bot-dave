@@ -17,7 +17,8 @@ class TrelloBoard(object):
         self.tc = TrelloClient(api_key=api_key, token=token)
         self._ab_id_cache = {}
         self._ab_name_cache = {}
-        _ = self.addressbook # warm-up the id cache
+        self._ab_slack_cache = {}
+        self._warmup_caches()
 
     @property
     def boards(self):
@@ -74,10 +75,18 @@ class TrelloBoard(object):
         if label:
             return label[0]
 
+    def _warmup_caches(self):
+        logger.debug("Warming up the caches")
+        ids = self.addressbook
+        for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
+            _ = self.contact_by_name(meetup_name)
+            if slack_name:
+                _ = self.contact_by_slack_name(slack_name)
+
     def create_board(self, board_name, team_name=None):
         template = self._board("Meetup Template")
         board = self._board(board_name)
-        org_id= self._org_id(team_name=team_name)
+        org_id = self._org_id(team_name=team_name)
 
         if not board:
             self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id)
@@ -105,11 +114,9 @@ class TrelloBoard(object):
     def tables(self, board_name):
         tables = {}
         board = self._board(board_name)
-        non_table_list = ["RSVPs", "In Chat (No Group)"]
         info_card = None
         if not board:
             return None
-        # table_list = [t for t in board.list_lists() if t.name not in non_table_list]
         for table in board.list_lists(list_filter="open"):
             names = []
             title = table.name if not table.name.startswith("RSVP") else "~ without a table ~"
@@ -149,6 +156,18 @@ class TrelloBoard(object):
                         self._ab_name_cache[member_name] = yaml.load(card.desc)
                         return self._ab_name_cache[member_name]
 
+    def contact_by_slack_name(self, slack_name):
+        if self._ab_slack_cache.get(slack_name):
+            return self._ab_slack_cache[slack_name]
+        else:
+            board = self._board("Address Book")
+            for l in board.list_lists(list_filter="open"):
+                for card in l.list_cards():
+                    desc = yaml.load(card.desc)
+                    if desc["slack"] == slack_name:
+                        self._ab_slack_cache[slack_name] = {"name": card.name, "id": desc["id"]}
+                        return self._ab_slack_cache[slack_name]
+
     def contact_by_id(self, member_id):
         if self._ab_id_cache.get(member_id):
             return self._ab_id_cache[member_id]
@@ -179,6 +198,7 @@ class TrelloBoard(object):
 
         ab_list.add_card(name=member_name, desc=info, labels=[no_slack])
 
+
 if __name__ == "__main__":
     from os import environ
     trello_key = environ["TRELLO_API_KEY"]
@@ -190,6 +210,7 @@ if __name__ == "__main__":
     print(t.contact_by_id(62568802))
 
     print(t._ab_name_cache)
-    print(t.contact_by_name("Alex T"))
-    print(t._ab_name_cache)
-    print(t.contact_by_name("Alex T"))
+    # print(t.contact_by_name("Alex T"))
+    # print(t._ab_name_cache)
+    # print(t.contact_by_name("Alex T"))
+    print(t._ab_slack_cache)

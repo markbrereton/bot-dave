@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
+import json
+import random
+
 from datetime import datetime
 from os import environ
 from time import sleep
+from fuzzywuzzy import process
 
 from dave.log import logger
 from dave.meetup import MeetupGroup
@@ -31,6 +35,8 @@ class Bot(object):
             self.known_events = self.ds.retrieve_events(current_event_ids)
         else:
             self.known_events = {}
+        with open("dave/resources/phrases.json", "r") as phrases:
+            self.phrases = json.loads(phrases.read())
 
     @property
     def event_names(self):
@@ -89,6 +95,75 @@ class Bot(object):
         else:
             logger.info("No changes for {}".format(event_name))
 
+    def _check_for_greeting(self, sentence):
+        """If any of the words in the user's input was a greeting, return a greeting response"""
+        greeting_keywords = self.phrases["requests"]["greetings"]
+        greeting_responses = self.phrases["responses"]["greetings"]
+        word = sentence.split(' ')[0]
+        if word.lower().rstrip('!') in greeting_keywords:
+            return random.choice(greeting_responses)
+
+    @staticmethod
+    def _natural_join(lst, separator=None):
+        if not separator:
+            separator = '\n'
+        resp = ',{}'.format(separator).join(lst)
+        resp = ' and'.join(resp.rsplit(',', 1))
+        return resp
+
+    def _next_event_info(self):
+        next_meetup = self.next_meetup
+        participants = next_meetup["participants"]
+        event_time = next_meetup["time"] / 1000
+        date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
+        name = next_meetup["name"]
+        msg = "Our next event is *{}*, on *{}* and " \
+              "there are *{}* people joining:\n{}".format(name, date, len(participants),
+                                                          self._natural_join(participants))
+        return msg
+
+    def _all_events_info(self):
+        msgs = ["Here are our next events.\n"]
+        for event in self.known_events.values():
+            participants = event["participants"]
+            event_time = event["time"] / 1000
+            date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
+            name = event["name"]
+            msg = "*{}*,\non *{}* with *{}* " \
+                  "people joining:\n{}".format(name, date, len(participants), self._natural_join(participants))
+            msgs.append(msg)
+        return '\n\n'.join(msgs)
+
+    def _tables_info(self, channel, request=None):
+        logger.debug("Got {} and {}".format(channel, request))
+        if not request and channel:
+            request = ' '.join(channel.split("_"))
+
+        logger.debug("Request {}".format(request))
+        logger.debug("Channel {}".format(channel))
+        logger.debug("Requested {}".format(request))
+        events = self.event_names
+        logger.debug("Events {}".format(events))
+        event_name = process.extractOne(request, events)[0]
+        logger.debug("Chosen {}".format(event_name))
+        msgs = ["Available tables for "]
+        msgs[0] += "*{}*".format(event_name)
+        table_info = self.tables(event_name)
+
+        for table, details in table_info.items():
+            info = details["info"].replace('\n', '\n>')
+            msgs.append("*{}*\n>{}\nJoining: *{}*".format(table.upper(), info, ', '.join(details["members"])))
+
+        return '\n\n'.join(msgs)
+
+    def _user_info(self, user_id):
+        info = self.user_info(user_id)
+        if info:
+            msg = "You are {} with id {} and slack username <@{}>".format(info["name"], info["id"], user_id)
+        else:
+            msg = "I don't know :disappointed:"
+        return msg
+
     def check_events(self):
         logger.info("Checking for event updates")
         for event in self.storg.upcoming_events:
@@ -123,3 +198,31 @@ class Bot(object):
 
     def table(self, event_name, table_title):
         return self.trello.table(event_name, table_title)
+
+    def user_info(self, slack_user_id):
+        slack_name = self.chat.user_info(slack_user_id)["name"]
+        return self.trello.contact_by_slack_name(slack_name)
+
+    def conversation(self, task_queue):
+        unknown_responses = self.phrases["responses"]["unknown"]
+        while True:
+            command, channel_id, user_id = task_queue.get()
+            if command.startswith("help"):
+                response = "Hold on tight! I'm coming."
+            elif "table status" in command.lower():
+                response = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                             request=command.split('table status')[-1])
+            elif "next event" in command.lower() and "events" not in command.lower():
+                response = self._next_event_info()
+            elif "events" in command.lower():
+                response = self._all_events_info()
+            elif "thanks" in command.lower() or "thank you" in command.lower():
+                response = "Anytime :relaxed:"
+            elif command.lower().startswith("who am i"):
+                response = self._user_info(user_id)
+            elif command.lower() == "what can you do?":
+                response = self.phrases["responses"]["help"]
+            else:
+                response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
+                    unknown_responses)
+            self.respond(response, channel_id)

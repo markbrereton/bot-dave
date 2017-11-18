@@ -7,7 +7,7 @@ import logging
 from os import environ
 
 logger = logging.getLogger("dave")
-level = environ.get("LOG_LEVEL")
+level = environ.get("LOG_LEVEL", "")
 if level.lower() == "debug":
     logger.setLevel(logging.DEBUG)
 elif level.lower() == "info":

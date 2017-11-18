@@ -47,12 +47,13 @@ class Slack(object):
         ids = [i["id"] for i in ims]
         return channel_id in ids
 
+    # TODO: return the calling user id as well
     def _parse_slack_output(self, slack_rtm_output):
         """Parse the :slack_rtm_output: received from Slack and return everything after the bot's @-name
         or None if it wasn't directed at the bot.
 
         :param slack_rtm_output: (str) Slack message to parse
-        :return: (tuple) A tuple of the stripes message and channel id
+        :return: (tuple) A tuple of the striped message and channel id
         """
         output_list = slack_rtm_output
         if output_list and len(output_list) > 0:
@@ -60,14 +61,14 @@ class Slack(object):
                 if output and 'text' in output and self.at_bot in output['text']:
                     # return text after the @ mention, whitespace removed
                     command = ' '.join([t for t in output["text"].split(self.at_bot) if t != self.at_bot])
-                    return command, output["channel"]
+                    return command, output["channel"], output["user"]
                 elif output and "channel" in output and "text" in output\
                         and self._is_im(output["channel"]) and output["user"] != self.bot_id:
                     logger.debug(output)
-                    return output["text"], output["channel"]
+                    return output["text"], output["channel"], output["user"]
                 else:
                     logger.debug(output)
-        return None, None
+        return None, None, None
 
     def new_event(self, event_name, date, venue, url, channel="#announcements"):
         """
@@ -116,10 +117,10 @@ class Slack(object):
         if self.sc.rtm_connect():
             logger.info("Slack RTM connected")
             while True:
-                command, channel = self._parse_slack_output(self.sc.rtm_read())
-                if command and channel:
-                    logger.debug("command and channel found {} {}".format(command, channel))
-                    queue.put((command, channel))
+                command, channel, user_id = self._parse_slack_output(self.sc.rtm_read())
+                if command and channel and user_id:
+                    logger.debug("command found text: {}, channel: {}, user_id: {}".format(command, channel, user_id))
+                    queue.put((command, channel, user_id))
                 sleep(read_delay)
 
     def message(self, content, channel):
@@ -134,3 +135,15 @@ class Slack(object):
             as_user=True,
             channel=channel,
             text=content)
+
+    def user_info(self, user_id):
+        logger.debug("Looking for user {}".format(user_id))
+        info = self.sc.api_call(
+            "users.info",
+            user=user_id
+        )
+        logger.debug("user info: {}".format(info))
+        if info["ok"]:
+            return info["user"]
+        else:
+            logger.warn(info["error"])

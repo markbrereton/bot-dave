@@ -15,7 +15,8 @@
       "I'd like to add you to my professional network on LinkedInn",
       "...",
       "*is confused*"
-    ]
+    ],
+    "help": "I can give you the details for our *next event* or *next events*.\n\nI can also give you the *table status* of an event. I'll try to figure out which one you mean, but it helps if you tell me *for* which one you want."
   },
   "requests":
   {
