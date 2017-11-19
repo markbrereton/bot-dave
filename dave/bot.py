@@ -25,6 +25,7 @@ class Bot(object):
         trello_key = environ["TRELLO_API_KEY"]
         trello_token = environ["TRELLO_TOKEN"]
         bot_id = environ.get("BOT_ID")
+        lab_channel_id = environ.get("LAB_CHANNEL_ΙD")
         self.team_name = environ["TRELLO_TEAM"]
         self.storg = MeetupGroup(meetup_key, group_id)
         self.chat = Slack(slack_token, bot_id)
@@ -37,6 +38,7 @@ class Bot(object):
             self.known_events = {}
         with open("dave/resources/phrases.json", "r") as phrases:
             self.phrases = json.loads(phrases.read())
+        self.chat.message("Bot starting up!", lab_channel_id)
 
     @property
     def event_names(self):
@@ -220,8 +222,10 @@ class Bot(object):
                 response = "Anytime :relaxed:"
             elif command.lower().startswith("who am i"):
                 response = self._user_info(user_id)
-            elif command.lower() == "what can you do?":
+            elif command.lower().startswith("what can you do?"):
                 response = self.phrases["responses"]["help"]
+            elif "admin info" in command.lower():
+                response = self.phrases["responses"]["admin_info"]
             else:
                 response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
                     unknown_responses)

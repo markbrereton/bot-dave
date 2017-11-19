@@ -16,7 +16,8 @@
       "...",
       "*is confused*"
     ],
-    "help": "I can give you the details for our *next event* or *next events*.\n\nI can also give you the *table status* of an event. I'll try to figure out which one you mean, but it helps if you tell me *for* which one you want."
+    "help": "I can give you the details for our *next event* or *next events*.\n\nI can also give you the *table status* of an event. I'll try to figure out which one you mean, but it helps if you tell me *for* which one you want.",
+    "admin_info": "The bot will check Meetup every 10' for new events and RSVPs. If there's a new event it will create a board on Trello with the same name as the event's title. If there are new RSVPs it will announce it on Slack and add them to the respective Trello board (they will have the meetup user ID as a description, do not change this since it's used by the bot to identufy users). If someone cancels their RSVP it will add a 'cancelled' label on Trello.\n\nEach Trello board will have one column per table. Each table column should have an 'Info' card, which should contain the blurb for the game in its description. The GM's card should have the 'gm' label. All these are used by the bot on the *table status* output.\n\nOn each check the bot will also add new users to the 'Address Book' board with the meetup ID, a placeholder for their Slack username and a 'NoSlack' label. This needs some manual work to add the Slack username and remove the label. This will be used in the futture for allowing interaction with meetup from Slack"
   },
   "requests":
   {
