@@ -78,10 +78,10 @@ class TrelloBoard(object):
     def _warmup_caches(self):
         logger.debug("Warming up the caches")
         ids = self.addressbook
-        for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
-            _ = self.contact_by_name(meetup_name)
-            if slack_name:
-                _ = self.contact_by_slack_name(slack_name)
+        # for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
+        #     _ = self.contact_by_name(meetup_name)
+        #     if slack_name:
+        #         _ = self.contact_by_slack_name(slack_name)
 
     def create_board(self, board_name, team_name=None):
         template = self._board("Meetup Template")
