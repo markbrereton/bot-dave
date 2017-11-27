@@ -63,6 +63,9 @@ class TrelloBoard(object):
         member_id = str(member_id)
         board = self._board(board_name)
 
+        if not board:
+            return None
+
         for l in board.list_lists(list_filter="open"):
             for card in l.list_cards():
                 if card.desc == member_id:
@@ -78,6 +81,7 @@ class TrelloBoard(object):
     def _warmup_caches(self):
         logger.debug("Warming up the caches")
         ids = self.addressbook
+        # TODO: Code crush; fix bug
         # for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
         #     _ = self.contact_by_name(meetup_name)
         #     if slack_name:
@@ -94,6 +98,9 @@ class TrelloBoard(object):
     def add_rsvp(self, name, member_id, board_name):
         member_id = str(member_id)
         board = self._board(board_name)
+        if not board:
+            return None
+
         rsvp_list = board.list_lists(list_filter="open")[0]
 
         if not self._member(member_id, board_name):
