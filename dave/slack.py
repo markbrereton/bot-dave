@@ -59,8 +59,9 @@ class Slack(object):
         if output_list and len(output_list) > 0:
             for output in output_list:
                 if output and 'text' in output and self.at_bot in output['text']:
-                    # return text after the @ mention, whitespace removed
-                    command = ' '.join([t for t in output["text"].split(self.at_bot) if t != self.at_bot])
+                    # return text excluding the @ mention, whitespace removed
+                    logger.debug(output)
+                    command = ' '.join([t.strip() for t in output["text"].split(self.at_bot) if t])
                     return command, output["channel"], output["user"]
                 elif output and "channel" in output and "text" in output\
                         and self._is_im(output["channel"]) and output["user"] != self.bot_id:

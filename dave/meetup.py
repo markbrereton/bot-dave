@@ -46,5 +46,5 @@ class MeetupGroup(object):
         try:
             return req.json()["results"]
         except Exception:
-            logger.debug("GET {} failed".format(self.api_url + path))
+            logger.debug("GET {} failed: {}".format(self.api_url + path, req.headers))
             return []

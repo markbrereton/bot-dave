@@ -27,12 +27,14 @@ class Store(object):
         self.cur.execute(sql)
         self.conn.commit()
 
+    # TODO: Handle None
     def retrieve_event(self, event_id):
         sql = "SELECT data FROM events WHERE event_id='{}';".format(event_id)
         self.cur.execute(sql)
         resp = self.cur.fetchone()
         return json.dumps(resp)
 
+    # TODO: Handle None
     def retrieve_events(self, event_ids):
         resp = {}
         event_ids = ["$${}$$".format(e) for e in event_ids]

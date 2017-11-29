@@ -105,7 +105,6 @@ class TrelloBoard(object):
 
         if not self._member(member_id, board_name):
             rsvp_list.add_card(name=name, desc=member_id)
-        logger.debug("add_rsvp: ", self._member.cache_info())
 
     def cancel_rsvp(self, member_id, board_name):
         logger.debug("Cancelling RSVP for members id {} at {}".format(member_id, board_name))
@@ -115,8 +114,6 @@ class TrelloBoard(object):
         logger.debug("Canceled tag is {}".format(canceled))
         if card:
             card.add_label(canceled)
-        logger.debug("cancel_rsvp", self._member.cache_info())
-        logger.debug("cancel_rsvp", self._label.cache_info())
 
     def tables(self, board_name):
         tables = {}
@@ -205,19 +202,3 @@ class TrelloBoard(object):
 
         ab_list.add_card(name=member_name, desc=info, labels=[no_slack])
 
-
-if __name__ == "__main__":
-    from os import environ
-    trello_key = environ["TRELLO_API_KEY"]
-    trello_token = environ["TRELLO_TOKEN"]
-    t = TrelloBoard(api_key=trello_key, token=trello_token)
-    print(t._ab_id_cache)
-    print(t.addressbook)
-    print(t._ab_id_cache)
-    print(t.contact_by_id(62568802))
-
-    print(t._ab_name_cache)
-    # print(t.contact_by_name("Alex T"))
-    # print(t._ab_name_cache)
-    # print(t.contact_by_name("Alex T"))
-    print(t._ab_slack_cache)

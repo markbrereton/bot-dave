@@ -31,11 +31,7 @@ class Bot(object):
         self.chat = Slack(slack_token, bot_id)
         self.trello = TrelloBoard(api_key=trello_key, token=trello_token)
         self.ds = Store()
-        if self.storg.upcoming_events:
-            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-            self.known_events = self.ds.retrieve_events(current_event_ids)
-        else:
-            self.known_events = {}
+        logger.debug("Known events: {}".format(self.known_events))
         with open("dave/resources/phrases.json", "r") as phrases:
             self.phrases = json.loads(phrases.read())
         self.chat.message("Bot starting up!", lab_channel_id)
@@ -43,6 +39,15 @@ class Bot(object):
     @property
     def event_names(self):
         return [e["name"] for e in self.known_events.values()]
+
+    @property
+    def known_events(self):
+        if self.storg.upcoming_events:
+            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
+            known_events = self.ds.retrieve_events(current_event_ids)
+        else:
+            known_events = {}
+        return known_events
 
     def _handle_event(self, event):
         # Check for new event
@@ -114,14 +119,17 @@ class Bot(object):
         return resp
 
     def _next_event_info(self):
-        next_meetup = self.next_meetup
-        participants = next_meetup["participants"]
-        event_time = next_meetup["time"] / 1000
-        date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
-        name = next_meetup["name"]
-        msg = "Our next event is *{}*, on *{}* and " \
-              "there are *{}* people joining:\n{}".format(name, date, len(participants),
-                                                          self._natural_join(participants))
+        next_event = self.next_event
+        if next_event:
+            participants = next_event["participants"]
+            event_time = next_event["time"] / 1000
+            date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
+            name = next_event["name"]
+            msg = "Our next event is *{}*, on *{}* and " \
+                  "there are *{}* people joining:\n{}".format(name, date, len(participants),
+                                                              self._natural_join(participants))
+        else:
+            msg = "I can't find any event :disappointed:"
         return msg
 
     def _all_events_info(self):
@@ -190,7 +198,9 @@ class Bot(object):
         self.chat.message(response, channel)
 
     @property
-    def next_meetup(self):
+    def next_event(self):
+        if not self.storg.upcoming_events:
+            return None
         self.storg.upcoming_events.sort(key=lambda d: d["time"])
         next_id = self.storg.upcoming_events[0]["id"]
         return self.known_events[next_id]

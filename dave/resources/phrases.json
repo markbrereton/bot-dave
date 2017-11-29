@@ -1,13 +1,28 @@
 {
   "responses": {
     "greetings":[
-      "Hey",
-      "*nods*",
-      "Hi there",
       "*waves*",
-      "Hello",
-      "Hi",
-      "Greetings"
+      "*nods*",
+      "Hey!",
+      "Hola!",
+      "Hej!",
+      "Hi!",
+      "Salut!",
+      "Moi!",
+      "Moin!",
+      "Γεια!",
+      "今日は",
+      "你好",
+      "Hoi!",
+      "Hei!",
+      "Siema!",
+      "Olá",
+      "Приве́т!",
+      "Saludi!",
+      "¡Hola!",
+      "Selam!",
+      "Ciao!"
+
     ],
     "unknown": [
       "Huh?",
@@ -27,7 +42,26 @@
       "hey",
       "greetings",
       "sup",
-      "yo"
+      "yo",
+      "Hey",
+      "Hola",
+      "Hej",
+      "Hi",
+      "Salut",
+      "Moi",
+      "Moin",
+      "Γεια",
+      "今日は",
+      "你好",
+      "Hoi",
+      "Hei",
+      "Siema",
+      "Olá",
+      "Приве́т",
+      "Saludi",
+      "Hola",
+      "Selam",
+      "Ciao"
     ]
   }
 }
