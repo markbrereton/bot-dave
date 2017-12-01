@@ -34,20 +34,25 @@ class Bot(object):
         with open("dave/resources/phrases.json", "r") as phrases:
             self._phrases = json.loads(phrases.read())
         self.chat.message("Bot starting up!", lab_channel_id)
+        if self.storg.upcoming_events:
+            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
+            self.known_events = self.ds.retrieve_events(current_event_ids)
+        else:
+            self.known_events = {}
         logger.debug("Known events: {}".format(self.known_events))
 
     @property
     def event_names(self):
         return [e["name"] for e in self.known_events.values()]
 
-    @property
-    def known_events(self):
-        if self.storg.upcoming_events:
-            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-            self._known_events = self.ds.retrieve_events(current_event_ids)
-        else:
-            self._known_events = {}
-        return self._known_events
+    # @property
+    # def known_events(self):
+    #     if self.storg.upcoming_events:
+    #         current_event_ids = [e["id"] for e in self.storg.upcoming_events]
+    #         self._known_events = self.ds.retrieve_events(current_event_ids)
+    #     else:
+    #         self._known_events = {}
+    #     return self._known_events
 
     def _handle_event(self, event):
         # Check for new event
