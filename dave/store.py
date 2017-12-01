@@ -21,23 +21,25 @@ class Store(object):
         )
         self.cur = self.conn.cursor()
 
+    def _run_sql(self, sql):
+        with self.conn.cursor() as cursor:
+            cursor.execute(sql)
+
     def store_event(self, event_id, data):
         logger.debug("Storing event {}".format(event_id))
         data = json.dumps(data)
         sql = "INSERT INTO events (event_id, data) VALUES ('{0}', $${1}$$) ON CONFLICT (event_id) DO UPDATE SET " \
               "data=$${1}$$;".format(event_id, data)
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        self.conn.commit()
+        self._run_sql(sql)
 
     def retrieve_event(self, event_id):
         logger.debug("Retrieving event {}".format(event_id))
         if not event_id:
             return {}
         sql = "SELECT data FROM events WHERE event_id='{}';".format(event_id)
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        resp = cur.fetchone()
+        with self.conn.cursor() as cursor:
+            cursor.execute(sql)
+            resp = cursor.fetchone()
         return json.dumps(resp)
 
     def retrieve_events(self, event_ids):
@@ -47,9 +49,9 @@ class Store(object):
             return resp
         event_ids = ["$${}$$".format(e) for e in event_ids]
         sql = "SELECT event_id, data FROM events WHERE event_id IN ({});".format(','.join(event_ids))
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        all_events = cur.fetchall()
+        with self.conn.cursor() as cursor:
+            cursor.execute(sql)
+            all_events = cursor.fetchall()
         for event_id, data in all_events:
             resp[event_id] = json.loads(data)
         return resp
@@ -64,10 +66,10 @@ class Store(object):
         resp = {}
         sql = "SELECT event_id, data FROM events;"
 
-        cur = self.conn.cursor()
-        cur.execute(sql)
-        all_events = self.cur.fetchall()
-        self.conn.commit()
+        with self.conn.cursor() as cursor:
+            cursor.execute(sql)
+            all_events = cursor.fetchall()
+
         for event_id, data in all_events:
             resp[event_id] = json.loads(data)
         return resp
