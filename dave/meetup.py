@@ -14,6 +14,7 @@ class MeetupGroup(object):
         self.api_key = api_key
         self.group_id = group_id
         self._upcoming_events = {}
+        self.update_upcoming_events()
 
     @property
     def upcoming_events(self):
