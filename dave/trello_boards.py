@@ -18,7 +18,7 @@ class TrelloBoard(object):
         self._ab_id_cache = {}
         self._ab_name_cache = {}
         self._ab_slack_cache = {}
-        self._warmup_caches()
+        # self._warmup_caches()
 
     @property
     def boards(self):
@@ -81,11 +81,13 @@ class TrelloBoard(object):
     def _warmup_caches(self):
         logger.debug("Warming up the caches")
         ids = self.addressbook
-        # TODO: Code crush; fix bug
-        # for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
-        #     _ = self.contact_by_name(meetup_name)
-        #     if slack_name:
-        #         _ = self.contact_by_slack_name(slack_name)
+        try:
+            for meetup_name, slack_name in [(n["name"], n["slack"]) for n in ids.values()]:
+                _ = self.contact_by_name(meetup_name)
+                if slack_name:
+                    _ = self.contact_by_slack_name(slack_name)
+        except Exception as e:
+            logger.warning("Exception {} when warming up caches".format(e))
 
     def create_board(self, board_name, team_name=None):
         template = self._board("Meetup Template")
@@ -149,6 +151,7 @@ class TrelloBoard(object):
         return self.tables(board_name)[list_name]
 
     def contact_by_name(self, member_name):
+        logger.debug("Checking {}".format(member_name))
         if self._ab_name_cache.get(member_name):
             return self._ab_name_cache[member_name]
         else:
@@ -157,6 +160,7 @@ class TrelloBoard(object):
                 for card in l.list_cards():
                     desc = yaml.load(card.desc)
                     if card.name == member_name and desc["slack"]:
+                        logger.debug("Desc: {}".format(desc))
                         self._ab_name_cache[member_name] = yaml.load(card.desc)
                         return self._ab_name_cache[member_name]
 
@@ -165,12 +169,15 @@ class TrelloBoard(object):
             return self._ab_slack_cache[slack_name]
         else:
             board = self._board("Address Book")
-            for l in board.list_lists(list_filter="open"):
-                for card in l.list_cards():
-                    desc = yaml.load(card.desc)
-                    if desc["slack"] == slack_name:
-                        self._ab_slack_cache[slack_name] = {"name": card.name, "id": desc["id"]}
-                        return self._ab_slack_cache[slack_name]
+            try:
+                for l in board.list_lists(list_filter="open"):
+                    for card in l.list_cards():
+                        desc = yaml.load(card.desc)
+                        if desc["slack"] == slack_name:
+                            self._ab_slack_cache[slack_name] = {"name": card.name, "id": desc["id"]}
+                            return self._ab_slack_cache[slack_name]
+            except:
+                logger.debug("Nothing found for {}".format(slack_name))
 
     def contact_by_id(self, member_id):
         if self._ab_id_cache.get(member_id):
@@ -201,4 +208,3 @@ class TrelloBoard(object):
                 return True
 
         ab_list.add_card(name=member_name, desc=info, labels=[no_slack])
-

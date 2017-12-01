@@ -31,28 +31,23 @@ class Bot(object):
         self.chat = Slack(slack_token, bot_id)
         self.trello = TrelloBoard(api_key=trello_key, token=trello_token)
         self.ds = Store()
-        if self.storg.upcoming_events:
-            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-            self.known_events = self.ds.retrieve_events(current_event_ids)
-        else:
-            self.known_events = {}
-        logger.debug("Known events: {}".format(self.known_events))
         with open("dave/resources/phrases.json", "r") as phrases:
-            self.phrases = json.loads(phrases.read())
+            self._phrases = json.loads(phrases.read())
         self.chat.message("Bot starting up!", lab_channel_id)
+        logger.debug("Known events: {}".format(self.known_events))
 
     @property
     def event_names(self):
         return [e["name"] for e in self.known_events.values()]
 
-    # @property
-    # def known_events(self):
-    #     if self.storg.upcoming_events:
-    #         current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-    #         known_events = self.ds.retrieve_events(current_event_ids)
-    #     else:
-    #         known_events = {}
-    #     return known_events
+    @property
+    def known_events(self):
+        if self.storg.upcoming_events:
+            current_event_ids = [e["id"] for e in self.storg.upcoming_events]
+            self._known_events = self.ds.retrieve_events(current_event_ids)
+        else:
+            self._known_events = {}
+        return self._known_events
 
     def _handle_event(self, event):
         # Check for new event
@@ -79,7 +74,12 @@ class Bot(object):
         for rsvp in self.storg.rsvps(event_id):
             member_name = rsvp["member"]["name"]
             member_id = rsvp["member"]["member_id"]
-            known_participants = self.known_events[event_id]["participants"]
+            try:
+                known_participants = self.known_events[event_id]["participants"]
+            except KeyError:
+                logger.error("No key {}".format(event_id))
+                logger.error("Known events: {}".format(self.known_events))
+
             self.trello.add_contact(member_name=member_name, member_id=member_id)
 
             if member_name not in known_participants and rsvp["response"] == "yes":
@@ -109,8 +109,8 @@ class Bot(object):
 
     def _check_for_greeting(self, sentence):
         """If any of the words in the user's input was a greeting, return a greeting response"""
-        greeting_keywords = self.phrases["requests"]["greetings"]
-        greeting_responses = self.phrases["responses"]["greetings"]
+        greeting_keywords = self._phrases["requests"]["greetings"]
+        greeting_responses = self._phrases["responses"]["greetings"]
         word = sentence.split(' ')[0]
         if word.lower().rstrip('!') in greeting_keywords:
             return random.choice(greeting_responses)
@@ -171,16 +171,9 @@ class Bot(object):
 
         return '\n\n'.join(msgs)
 
-    def _user_info(self, user_id):
-        info = self.user_info(user_id)
-        if info:
-            msg = "You are {} with id {} and slack username <@{}>".format(info["name"], info["id"], user_id)
-        else:
-            msg = "I don't know :disappointed:"
-        return msg
-
     def check_events(self):
         logger.info("Checking for event updates")
+        self.storg.update_upcoming_events()
         for event in self.storg.upcoming_events:
             self._handle_event(event)
             self._handle_rsvps(event)
@@ -190,7 +183,7 @@ class Bot(object):
         logger.debug("Saving events")
         self.ds.store_events(self.known_events)
 
-    def monitor_events(self, sleep_time=600):
+    def monitor_events(self, sleep_time=900):
         while True:
             self.check_events()
             self.save_events()
@@ -216,12 +209,17 @@ class Bot(object):
     def table(self, event_name, table_title):
         return self.trello.table(event_name, table_title)
 
-    def user_info(self, slack_user_id):
-        slack_name = self.chat.user_info(slack_user_id)["name"]
-        return self.trello.contact_by_slack_name(slack_name)
+    def _user_info(self, slack_name):
+        info = self.trello.contact_by_slack_name(slack_name)
+        if not info:
+            return "I don't know :disappointed:"
+        meetup_username = info["name"]
+        meetup_id = info["id"]
+        profile_url = "https://www.meetup.com/Stockholm-Roleplaying-Guild/members/{}/".format(meetup_id)
+        return "{} is known on Meetup as *{}*: {}".format(slack_name, meetup_username, profile_url )
 
     def conversation(self, task_queue):
-        unknown_responses = self.phrases["responses"]["unknown"]
+        unknown_responses = self._phrases["responses"]["unknown"]
         while True:
             command, channel_id, user_id = task_queue.get()
             if command.startswith("help"):
@@ -235,12 +233,13 @@ class Bot(object):
                 response = self._all_events_info()
             elif "thanks" in command.lower() or "thank you" in command.lower():
                 response = "Anytime :relaxed:"
-            elif command.lower().startswith("who am i"):
-                response = self._user_info(user_id)
+            elif "who is" in command.lower():
+                slack_name = command.split("who is")[-1].strip("?").strip()
+                response = self._user_info(slack_name)
             elif command.lower().startswith("what can you do?"):
-                response = self.phrases["responses"]["help"]
+                response = self._phrases["responses"]["help"]
             elif "admin info" in command.lower():
-                response = self.phrases["responses"]["admin_info"]
+                response = self._phrases["responses"]["admin_info"]
             else:
                 response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
                     unknown_responses)

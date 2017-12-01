@@ -58,13 +58,13 @@ class Slack(object):
         output_list = slack_rtm_output
         if output_list and len(output_list) > 0:
             for output in output_list:
-                if output and 'text' in output and self.at_bot in output['text']:
+                if output and 'text' in output and self.at_bot in output['text'] and output["user"] != 'USLACKBOT':
                     # return text excluding the @ mention, whitespace removed
                     logger.debug(output)
                     command = ' '.join([t.strip() for t in output["text"].split(self.at_bot) if t])
                     return command, output["channel"], output["user"]
                 elif output and "channel" in output and "text" in output\
-                        and self._is_im(output["channel"]) and output["user"] != self.bot_id:
+                        and self._is_im(output["channel"]) and output["user"] != self.bot_id and output["user"] != 'USLACKBOT':
                     logger.debug(output)
                     return output["text"], output["channel"], output["user"]
                 else:
@@ -137,7 +137,7 @@ class Slack(object):
             channel=channel,
             text=content)
 
-    def user_info(self, user_id):
+    def userid_info(self, user_id):
         logger.debug("Looking for user {}".format(user_id))
         info = self.sc.api_call(
             "users.info",

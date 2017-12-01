@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import requests
-
 from dave.log import logger
 
 
@@ -14,16 +13,24 @@ class MeetupGroup(object):
         self.api_url = "http://api.meetup.com"
         self.api_key = api_key
         self.group_id = group_id
+        self._upcoming_events = {}
 
     @property
     def upcoming_events(self):
+        return self._upcoming_events
+
+    @upcoming_events.setter
+    def upcoming_events(self, value):
+        self._upcoming_events = value
+
+    def update_upcoming_events(self):
         """Gets all upcoming events for the MeetupGroup
         https://secure.meetup.com/meetup_api/console/?path=/2/events
 
         :return: (list) A list of dicts, one dict per event
         """
         params = {"key": self.api_key, "group_id": self.group_id, "status": "upcoming"}
-        return self._get("/2/events", params)
+        self._upcoming_events = self._get("/2/events", params)
 
     def rsvps(self, event_id):
         """Get's all RSVPs for a specific event
@@ -48,3 +55,4 @@ class MeetupGroup(object):
         except Exception:
             logger.debug("GET {} failed: {}".format(self.api_url + path, req.headers))
             return []
+
