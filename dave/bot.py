@@ -3,7 +3,7 @@
 import json
 import random
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from os import environ
 from time import sleep
 from fuzzywuzzy import process
@@ -60,6 +60,7 @@ class Bot(object):
         if event_id not in self.known_events.keys():
             logger.info("New event found: {}".format(event["name"]))
             event_date = int(event["time"]) / 1000
+            event_date = event_date
             event_date = datetime.fromtimestamp(event_date).strftime('%A %B %d %H:%M')
 
             self.chat.new_event(event["name"], event_date, event["venue"]["name"], event["event_url"])
@@ -228,7 +229,7 @@ class Bot(object):
         while True:
             command, channel_id, user_id = task_queue.get()
             if command.startswith("help"):
-                response = "Hold on tight! I'm coming."
+                response = "Hold on tight, I'm coming!"
             elif "table status" in command.lower():
                 response = self._tables_info(channel=self.chat.channel_name(channel_id),
                                              request=command.split('table status')[-1])
@@ -237,11 +238,11 @@ class Bot(object):
             elif "events" in command.lower():
                 response = self._all_events_info()
             elif "thanks" in command.lower() or "thank you" in command.lower():
-                response = "Anytime :relaxed:"
+                response = random.choice(self._phrases["responses"]["thanks"])
             elif "who is" in command.lower():
                 slack_name = command.split("who is")[-1].strip("?").strip()
                 response = self._user_info(slack_name)
-            elif command.lower().startswith("what can you do?"):
+            elif command.lower().startswitch("what can you do") or command.lower() == "man":
                 response = self._phrases["responses"]["help"]
             elif "admin info" in command.lower():
                 response = self._phrases["responses"]["admin_info"]

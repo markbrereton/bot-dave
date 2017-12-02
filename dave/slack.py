@@ -34,6 +34,23 @@ class Slack(object):
             if channel["id"] == channel_id:
                 return channel["name"]
 
+    def message(self, content, channel):
+        """Sends a simple message containing :content: to :channel:
+
+        :param content: (str) The, well, content of the message
+        :param channel: (str) The channel where to make the announcement. Needs a leading #
+        :return: None
+        """
+        self.sc.api_call(
+            "chat.postMessage",
+            as_user=True,
+            channel=channel,
+            text=content)
+
+    def send_attachment(self, title, message, channel, colour = "#808080", extra_options={}):
+        attachment = [{"pretext": title, "color": colour, "text": message, **extra_options}]
+        self._announcement(attachment, channel=channel)
+
     def _announcement(self, attachment, channel="#small_council"):
         self.sc.api_call(
             "chat.postMessage",
@@ -81,14 +98,18 @@ class Slack(object):
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
         """
-        attachment = [{
-            "pretext": "Woohoo! We've got a new event coming up!",
-            "color": "#36a64f",
-            "title": event_name,
-            "title_link": url,
-            "text": "{}\n{}".format(date, venue)
-        }]
-        self._announcement(attachment, channel=channel)
+        # attachment = [{
+        #     "pretext": "Woohoo! We've got a new event coming up!",
+        #     "color": "#36a64f",
+        #     "title": event_name,
+        #     "title_link": url,
+        #     "text": "{}\n{}".format(date, venue)
+        # }]
+        # self._announcement(attachment, channel=channel)
+        text = "{}\n{}".format(date, venue)
+        extra_options = {"title": event_name, "title_link": url,}
+        title = "Woohoo! We've got a new event coming up!"
+        self.send_attachment(title=title, message=text, channel=channel, extra_options=extra_options)
 
     def new_rsvp(self, names, response, event_name, spots, channel="#dungeon_lab"):
         """Announces a new RSVP on :channel:
@@ -100,12 +121,17 @@ class Slack(object):
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
         """
-        attachment = [{
-            "pretext": "New RSVP",
-            "color": "#36a64f",
-            "text": "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
-        }]
-        self._announcement(attachment, channel=channel)
+        # colour = "#36a64f" if response == "yes" else "b20000"
+        # attachment = [{
+        #     "pretext": "New RSVP",
+        #     "color": colour,
+        #     "text": "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
+        # }]
+        # self._announcement(attachment, channel=channel)
+        colour = "#36a64f" if response == "yes" else "b20000"
+        text = "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
+        self.send_attachment(title="New RSVP", message=text, colour=colour, channel=channel)
+
 
     def rtm(self, queue, read_delay=1):
         """Creates a Real Time Messaging connection to Slack and listens for events
@@ -123,19 +149,6 @@ class Slack(object):
                     logger.debug("command found text: {}, channel: {}, user_id: {}".format(command, channel, user_id))
                     queue.put((command, channel, user_id))
                 sleep(read_delay)
-
-    def message(self, content, channel):
-        """Sends a simple message containing :content: to :channel:
-
-        :param content: (str) The, well, content of the message
-        :param channel: (str) The channel where to make the announcement. Needs a leading #
-        :return: None
-        """
-        self.sc.api_call(
-            "chat.postMessage",
-            as_user=True,
-            channel=channel,
-            text=content)
 
     def userid_info(self, user_id):
         logger.debug("Looking for user {}".format(user_id))
