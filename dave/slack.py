@@ -47,7 +47,9 @@ class Slack(object):
             channel=channel,
             text=content)
 
-    def send_attachment(self, title, message, channel, colour = "#808080", extra_options={}):
+    def send_attachment(self, title, message, channel, colour = "#808080", extra_options=None):
+        if not extra_options:
+            extra_options = {}
         attachment = [{"pretext": title, "color": colour, "text": message, **extra_options}]
         self._announcement(attachment, channel=channel)
 
@@ -98,14 +100,6 @@ class Slack(object):
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
         """
-        # attachment = [{
-        #     "pretext": "Woohoo! We've got a new event coming up!",
-        #     "color": "#36a64f",
-        #     "title": event_name,
-        #     "title_link": url,
-        #     "text": "{}\n{}".format(date, venue)
-        # }]
-        # self._announcement(attachment, channel=channel)
         text = "{}\n{}".format(date, venue)
         extra_options = {"title": event_name, "title_link": url,}
         title = "Woohoo! We've got a new event coming up!"
@@ -121,13 +115,6 @@ class Slack(object):
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
         """
-        # colour = "#36a64f" if response == "yes" else "b20000"
-        # attachment = [{
-        #     "pretext": "New RSVP",
-        #     "color": colour,
-        #     "text": "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
-        # }]
-        # self._announcement(attachment, channel=channel)
         colour = "#36a64f" if response == "yes" else "b20000"
         text = "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
         self.send_attachment(title="New RSVP", message=text, colour=colour, channel=channel)

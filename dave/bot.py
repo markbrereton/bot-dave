@@ -45,15 +45,6 @@ class Bot(object):
     def event_names(self):
         return [e["name"] for e in self.known_events.values()]
 
-    # @property
-    # def known_events(self):
-    #     if self.storg.upcoming_events:
-    #         current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-    #         self._known_events = self.ds.retrieve_events(current_event_ids)
-    #     else:
-    #         self._known_events = {}
-    #     return self._known_events
-
     def _handle_event(self, event):
         # Check for new event
         event_id = event["id"]

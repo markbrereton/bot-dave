@@ -135,18 +135,22 @@ class TrelloBoard(object):
                     for label in card.labels:
                         if label.name == "GM":
                             names.append(card.name + " (GM)")
+                        elif label.name == "Canceled":
+                            names.append(card.name + " (CANCELED)")
                         else:
                             names.append(card.name)
             if info_card:
-                full_info = info_card.desc.split("Players: ")
-                info = {"blurb": full_info[0], "players": full_info[1]}
-
+                full_info = info_card.desc.split("Players: ", 1)
+                blurb = full_info[0]
+                if len(full_info) == 2:
+                    players = full_info[1]
+                else:
+                    players = ""
             else:
-                info = {}
-            tables[title] = {}
-            tables[title]["members"] = names
-            tables[title]["blurb"] = info.get("blurb", "No info yet")
-            tables[title]["players"] = "Players: {}".format(info.get("players", "No info yet"))
+                blurb, players = "", ""
+
+            tables[title] = {"members": names, "blurb": blurb}
+            tables[title]["players"] = "Players: {}".format(players) if players else ""
         resp = OrderedDict(sorted(tables.items()))
         return resp
 
