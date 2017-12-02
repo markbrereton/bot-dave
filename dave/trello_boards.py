@@ -117,7 +117,7 @@ class TrelloBoard(object):
         if card:
             card.add_label(canceled)
 
-    def tables(self, board_name):
+    def tables_detail(self, board_name):
         tables = {}
         board = self._board(board_name)
         info_card = None
@@ -138,17 +138,21 @@ class TrelloBoard(object):
                         else:
                             names.append(card.name)
             if info_card:
-                info = info_card.desc
+                full_info = info_card.desc.split("Players: ")
+                info = {"blurb": full_info[0], "players": full_info[1]}
+
             else:
-                info = ""
+                info = {}
             tables[title] = {}
             tables[title]["members"] = names
-            tables[title]["info"] = info
+            tables[title]["blurb"] = info.get("blurb", "No info yet")
+            tables[title]["players"] = "Players: {}".format(info.get("players", "No info yet"))
         resp = OrderedDict(sorted(tables.items()))
         return resp
 
+
     def table(self, board_name, list_name):
-        return self.tables(board_name)[list_name]
+        return self.tables_detail(board_name)[list_name]
 
     def contact_by_name(self, member_name):
         logger.debug("Checking {}".format(member_name))

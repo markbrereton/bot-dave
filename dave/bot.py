@@ -3,7 +3,7 @@
 import json
 import random
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import environ
 from time import sleep
 from fuzzywuzzy import process
@@ -155,7 +155,7 @@ class Bot(object):
             msgs.append(msg)
         return '\n\n'.join(msgs)
 
-    def _tables_info(self, channel, request=None):
+    def _tables_info(self, channel, request=None, detail=False, table_number=None):
         logger.debug("Got {} and {}".format(channel, request))
         if not request and channel:
             request = ' '.join(channel.split("_"))
@@ -167,13 +167,28 @@ class Bot(object):
         logger.debug("Events {}".format(events))
         event_name = process.extractOne(request, events)[0]
         logger.debug("Chosen {}".format(event_name))
-        msgs = ["Available tables for "]
-        msgs[0] += "*{}*".format(event_name)
-        table_info = self.tables(event_name)
+        if table_number:
+            msgs = ["Table {} for {}".format(table_number, event_name)]
+        else:
+            msgs = ["Available tables for "]
+            msgs[0] += "*{}*".format(event_name)
+
+        table_info = self.tables_detail(event_name)
 
         for table, details in table_info.items():
-            info = details["info"].replace('\n', '\n>')
-            msgs.append("*{}*\n>{}\nJoining: *{}*".format(table.upper(), info, ', '.join(details["members"])))
+            if not table_number:
+                blurb = details["blurb"].replace('\n', '\n>')
+                players = details["players"].replace('\n', '\n>')
+                if detail:
+                    msgs.append("*{}*\n>{}{}\nJoining: *{}*".format(table.upper(), blurb, players, ', '.join(details["members"])))
+                else:
+                    msgs.append(
+                        "*{}*\n{}\nJoining: *{}*".format(table.upper(), players, ', '.join(details["members"])))
+            elif table_number and table.startswith(str(table_number)):
+                blurb = details["blurb"].replace('\n', '\n>')
+                players = details["players"].replace('\n', '\n>')
+                msgs.append("*{}*\n>{}{}\nJoining: *{}*".format(table.upper(), blurb, players,
+                                                                   ', '.join(details["members"])))
 
         return '\n\n'.join(msgs)
 
@@ -209,8 +224,8 @@ class Bot(object):
         next_id = self.storg.upcoming_events[0]["id"]
         return self.known_events[next_id]
 
-    def tables(self, event_name):
-        return self.trello.tables(event_name)
+    def tables_detail(self, event_name):
+        return self.trello.tables_detail(event_name)
 
     def table(self, event_name, table_title):
         return self.trello.table(event_name, table_title)
@@ -230,9 +245,23 @@ class Bot(object):
             command, channel_id, user_id = task_queue.get()
             if command.startswith("help"):
                 response = "Hold on tight, I'm coming!"
-            elif "table status" in command.lower():
+            elif command.lower().startswith("table status"):
                 response = self._tables_info(channel=self.chat.channel_name(channel_id),
                                              request=command.split('table status')[-1])
+            elif command.lower().startswith("detailed table status"):
+                response = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                             request=command.split('table status')[-1], detail=True)
+            elif command.lower().startswith("table"):
+                full_req = command.split('table')[-1].strip()
+                split_req = full_req.split(" ", 1)
+                table_number = split_req[0]
+                if len(split_req) == 2:
+                    request = split_req[1]
+                else:
+                    request = None
+                logger.debug("Table {}".format(table_number))
+                response = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                            request=request, detail=True, table_number=table_number)
             elif "next event" in command.lower() and "events" not in command.lower():
                 response = self._next_event_info()
             elif "events" in command.lower():
@@ -242,7 +271,7 @@ class Bot(object):
             elif "who is" in command.lower():
                 slack_name = command.split("who is")[-1].strip("?").strip()
                 response = self._user_info(slack_name)
-            elif command.lower().startswitch("what can you do") or command.lower() == "man":
+            elif command.lower().startswith("what can you do") or command.lower() == "man":
                 response = self._phrases["responses"]["help"]
             elif "admin info" in command.lower():
                 response = self._phrases["responses"]["admin_info"]
