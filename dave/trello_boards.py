@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from time import sleep
 
 import yaml
 from functools import lru_cache
@@ -96,6 +97,7 @@ class TrelloBoard(object):
 
         if not board:
             self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id)
+            sleep(0.2)
 
     def add_rsvp(self, name, member_id, board_name):
         member_id = str(member_id)

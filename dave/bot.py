@@ -77,11 +77,11 @@ class Bot(object):
                 logger.error("No key {}".format(event_id))
                 logger.error("Known events: {}".format(self.known_events))
 
-            self.trello.add_contact(member_name=member_name, member_id=member_id)
-
             if member_name not in known_participants and rsvp["response"] == "yes":
                 newcomers.append(member_name)
                 self.trello.add_rsvp(name=member_name, member_id=member_id, board_name=event_name)
+                self.trello.add_contact(member_name=member_name, member_id=member_id)
+                sleep(0.2)
             elif member_name in known_participants and rsvp["response"] == "no":
                 self.trello.cancel_rsvp(member_id, board_name=event_name)
                 cancels.append(member_name)
