@@ -96,7 +96,7 @@ class TrelloBoard(object):
         org_id = self._org_id(team_name=team_name)
 
         if not board:
-            self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id)
+            self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id, permission_level="public")
             sleep(0.2)
 
     def add_rsvp(self, name, member_id, board_name):
