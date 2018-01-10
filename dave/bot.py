@@ -3,7 +3,7 @@
 import json
 import random
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from os import environ
 from time import sleep
 from fuzzywuzzy import process
@@ -46,13 +46,13 @@ class Bot(object):
         return [e["name"] for e in self.known_events.values()]
 
     def _handle_event(self, event):
+        cet = timezone(timedelta(0, 3600), "CET")
         # Check for new event
         event_id = event["id"]
         if event_id not in self.known_events.keys():
             logger.info("New event found: {}".format(event["name"]))
             event_date = int(event["time"]) / 1000
-            event_date = event_date
-            event_date = datetime.fromtimestamp(event_date).strftime('%A %B %d %H:%M')
+            event_date = datetime.fromtimestamp(event_date, tz=cet).strftime('%A %B %d %H:%M')
 
             self.chat.new_event(event["name"], event_date, event["venue"]["name"], event["event_url"])
             self.trello.create_board(event["name"], team_name=self.team_name)
