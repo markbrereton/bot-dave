@@ -25,7 +25,7 @@ class Bot(object):
         trello_key = environ["TRELLO_API_KEY"]
         trello_token = environ["TRELLO_TOKEN"]
         bot_id = environ.get("BOT_ID")
-        # lab_channel_id = environ.get("LAB_CHANNEL_ID")
+        self.lab_channel_id = environ.get("LAB_CHANNEL_ID")
         self.team_name = environ["TRELLO_TEAM"]
         self.storg = MeetupGroup(meetup_key, group_id)
         self.chat = Slack(slack_token, bot_id)
@@ -202,6 +202,7 @@ class Bot(object):
             try:
                 self.check_events()
             except Exception as e:
+                self.chat.message("Swallowed exception at check_events: {}".format(e), self.lab_channel_id)
                 logger.error("Swallowed exception at check_events: {}".format(e))
             self.save_events()
             sleep(sleep_time)
