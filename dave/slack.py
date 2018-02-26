@@ -41,7 +41,7 @@ class Slack(object):
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
         """
-        logger.debug("Sending {} to {}".format(content, channel))
+        logger.debug("Sending {} to {}".format(content[0:10], channel))
         self.sc.api_call(
             "chat.postMessage",
             as_user=True,

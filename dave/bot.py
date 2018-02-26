@@ -33,13 +33,15 @@ class Bot(object):
         self.ds = Store()
         with open("dave/resources/phrases.json", "r") as phrases:
             self._phrases = json.loads(phrases.read())
-        self.chat.message("Bot starting up!", lab_channel_id)
         if self.storg.upcoming_events:
             current_event_ids = [e["id"] for e in self.storg.upcoming_events]
             self.known_events = self.ds.retrieve_events(current_event_ids)
         else:
             self.known_events = {}
+
         logger.debug("Known events: {}".format(self.known_events))
+        logger.debug("Env: {}".format(environ.items()))
+        self.chat.message("Bot Dave reporting for duty!", lab_channel_id)
 
     @property
     def event_names(self):
