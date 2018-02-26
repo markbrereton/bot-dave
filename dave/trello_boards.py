@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from time import sleep
 
 import yaml
 from functools import lru_cache
@@ -96,8 +95,8 @@ class TrelloBoard(object):
         org_id = self._org_id(team_name=team_name)
 
         if not board:
-            self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id, permission_level="public")
-            sleep(0.2)
+            self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id,
+                              permission_level="public")
 
     def add_rsvp(self, name, member_id, board_name):
         member_id = str(member_id)
@@ -105,9 +104,8 @@ class TrelloBoard(object):
         if not board:
             return None
 
-        rsvp_list = board.list_lists(list_filter="open")[0]
-
         if not self._member(member_id, board_name):
+            rsvp_list = board.list_lists(list_filter="open")[0]
             rsvp_list.add_card(name=name, desc=member_id)
 
     def cancel_rsvp(self, member_id, board_name):

@@ -78,9 +78,9 @@ class Bot(object):
                 logger.error("Known events: {}".format(self.known_events))
 
             if member_name not in known_participants and rsvp["response"] == "yes":
-                newcomers.append(member_name)
                 self.trello.add_rsvp(name=member_name, member_id=member_id, board_name=event_name)
-                self.trello.add_contact(member_name=member_name, member_id=member_id)
+                # self.trello.add_contact(member_name=member_name, member_id=member_id)
+                newcomers.append(member_name)
                 sleep(0.2)
             elif member_name in known_participants and rsvp["response"] == "no":
                 self.trello.cancel_rsvp(member_id, board_name=event_name)
@@ -197,7 +197,10 @@ class Bot(object):
 
     def monitor_events(self, sleep_time=900):
         while True:
-            self.check_events()
+            try:
+                self.check_events()
+            except Exception as e:
+                logger.error("Swallowed exception at check_events: {}".format(e))
             self.save_events()
             sleep(sleep_time)
 
