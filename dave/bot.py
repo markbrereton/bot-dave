@@ -25,7 +25,7 @@ class Bot(object):
         trello_key = environ["TRELLO_API_KEY"]
         trello_token = environ["TRELLO_TOKEN"]
         bot_id = environ.get("BOT_ID")
-        lab_channel_id = environ.get("LAB_CHANNEL_ΙD")
+        # lab_channel_id = environ.get("LAB_CHANNEL_ID")
         self.team_name = environ["TRELLO_TEAM"]
         self.storg = MeetupGroup(meetup_key, group_id)
         self.chat = Slack(slack_token, bot_id)
@@ -41,7 +41,7 @@ class Bot(object):
 
         logger.debug("Known events: {}".format(self.known_events))
         logger.debug("Env: {}".format(environ.items()))
-        self.chat.message("Bot Dave reporting for duty!", lab_channel_id)
+        self.chat.message("Bot Dave reporting for duty!", environ.get("LAB_CHANNEL_ID"))
 
     @property
     def event_names(self):
