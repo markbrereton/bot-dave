@@ -79,8 +79,8 @@ class TrelloBoard(object):
                     return card
 
     @lru_cache(maxsize=128)
-    def _label(self, label_name, board_url):
-        board = self._board_by_url(board_url)
+    def _label(self, label_name, board_name):
+        board = self._board(board_name)
         label = [l for l in board.get_labels() if l.name == label_name]
         if label:
             return label[0]
