@@ -54,7 +54,14 @@ class TrelloBoard(object):
 
     @lru_cache(maxsize=128)
     def _board(self, board_name):
+        logger.debug("Looking up board {}".format(board_name))
         board = [b for b in self.boards if b.name == board_name]
+        if board:
+            return board[0]
+
+    @lru_cache(maxsize=128)
+    def _board_by_url(self, board_url):
+        board = [b for b in self.boards if b.url == board_url]
         if board:
             return board[0]
 
@@ -72,8 +79,8 @@ class TrelloBoard(object):
                     return card
 
     @lru_cache(maxsize=128)
-    def _label(self, label_name, board_name):
-        board = self._board(board_name)
+    def _label(self, label_name, board_url):
+        board = self._board_by_url(board_url)
         label = [l for l in board.get_labels() if l.name == label_name]
         if label:
             return label[0]
@@ -90,15 +97,18 @@ class TrelloBoard(object):
             logger.warning("Exception {} when warming up caches".format(e))
 
     def create_board(self, board_name, team_name=None):
+        logger.debug("Checking for board {} on {} team".format(board_name, team_name))
         template = self._board("Meetup Template")
         board = self._board(board_name)
         org_id = self._org_id(team_name=team_name)
 
         if not board:
+            logger.debug("Adding board {}".format(board_name))
             self.tc.add_board(board_name=board_name, source_board=template, organization_id=org_id,
                               permission_level="public")
 
     def add_rsvp(self, name, member_id, board_name):
+        logger.debug("Adding rsvp {} to {}".format(name, board_name))
         member_id = str(member_id)
         board = self._board(board_name)
         if not board:
@@ -150,10 +160,9 @@ class TrelloBoard(object):
                 blurb, players = "", ""
 
             tables[title] = {"members": names, "blurb": blurb}
-            tables[title]["players"] = "Players: {}".format(players) if players else ""
+            tables[title]["players"] = players or "Unknown"
         resp = OrderedDict(sorted(tables.items()))
         return resp
-
 
     def table(self, board_name, list_name):
         return self.tables_detail(board_name)[list_name]
@@ -216,3 +225,13 @@ class TrelloBoard(object):
                 return True
 
         ab_list.add_card(name=member_name, desc=info, labels=[no_slack])
+
+    def add_table(self, title, info, board_url):
+        board = self._board_by_url(board_url)
+        table_numbers = [int(n.name.split(".", 1)[0]) for n in board.list_lists(list_filter="open") if n.name[0].isnumeric()]
+        ordinal = max(table_numbers) + 1 if table_numbers else 1
+        title = "{}. {}".format(ordinal, title)
+        table = board.add_list(name=title, pos="bottom")
+        info = "\n\nPlayers:".join(info.split("Players:"))
+        table.add_card("Info", desc=info)
+        return "Table *{}* added to *{}*".format(title, board.name)

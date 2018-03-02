@@ -34,9 +34,18 @@ class Slack(object):
             if channel["id"] == channel_id:
                 return channel["name"]
 
-    def message(self, content, channel):
+    def channel_topic(self, channel_id):
+        info = self.sc.api_call("channels.info", channel=channel_id)
+        if info["ok"]:
+            return info["channel"]["topic"]["value"]
+        else:
+            logger.critical("{}".format(info))
+            raise ValueError
+
+    def message(self, content, channel, attachments=None):
         """Sends a simple message containing :content: to :channel:
 
+        :param list attachments:
         :param content: (str) The, well, content of the message
         :param channel: (str) The channel where to make the announcement. Needs a leading #
         :return: None
@@ -46,9 +55,10 @@ class Slack(object):
             "chat.postMessage",
             as_user=True,
             channel=channel,
-            text=content)
+            text=content,
+            attachments=attachments)
 
-    def send_attachment(self, title, message, channel, colour = "#808080", extra_options=None):
+    def send_attachment(self, message, channel, title=None, colour = "#808080", extra_options=None):
         if not extra_options:
             extra_options = {}
         attachment = [{"pretext": title, "color": colour, "text": message, **extra_options}]
@@ -119,7 +129,6 @@ class Slack(object):
         colour = "#36a64f" if response == "yes" else "b20000"
         text = "{} replied {} for the {}\n{} spots left".format(names, response, event_name, spots)
         self.send_attachment(title="New RSVP", message=text, colour=colour, channel=channel)
-
 
     def rtm(self, queue, read_delay=1):
         """Creates a Real Time Messaging connection to Slack and listens for events

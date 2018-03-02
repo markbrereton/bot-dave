@@ -35,31 +35,31 @@ class Bot(object):
             self._phrases = json.loads(phrases.read())
         if self.storg.upcoming_events:
             current_event_ids = [e["id"] for e in self.storg.upcoming_events]
-            self.known_events = self.ds.retrieve_events(current_event_ids)
+            self.stored_events = self.ds.retrieve_events(current_event_ids)
         else:
-            self.known_events = {}
+            self.stored_events = {}
 
-        logger.debug("Known events: {}".format(self.known_events))
+        logger.debug("Known events: {}".format(self.stored_events))
         logger.debug("Env: {}".format(environ.items()))
-        self.chat.message("Bot Dave reporting for duty!", environ.get("LAB_CHANNEL_ID"))
+        self.chat.message("Reporting for duty!", environ.get("LAB_CHANNEL_ID"))
 
     @property
     def event_names(self):
-        return [e["name"] for e in self.known_events.values()]
+        return [e["name"] for e in self.stored_events.values()]
 
     def _handle_event(self, event):
         cet = timezone(timedelta(0, 3600), "CET")
         # Check for new event
         event_id = event["id"]
-        if event_id not in self.known_events.keys():
+        if event_id not in self.stored_events.keys():
             logger.info("New event found: {}".format(event["name"]))
             event_date = int(event["time"]) / 1000
             event_date = datetime.fromtimestamp(event_date, tz=cet).strftime('%A %B %d %H:%M')
 
             self.chat.new_event(event["name"], event_date, event["venue"]["name"], event["event_url"])
             self.trello.create_board(event["name"], team_name=self.team_name)
-            self.known_events[event_id] = event
-            self.known_events[event_id]["participants"] = []
+            self.stored_events[event_id] = event
+            self.stored_events[event_id]["participants"] = []
 
     def _handle_rsvps(self, event):
         event_id = event["id"]
@@ -74,10 +74,10 @@ class Bot(object):
             member_name = rsvp["member"]["name"]
             member_id = rsvp["member"]["member_id"]
             try:
-                known_participants = self.known_events[event_id]["participants"]
+                known_participants = self.stored_events[event_id]["participants"]
             except KeyError:
                 logger.error("No key {}".format(event_id))
-                logger.error("Known events: {}".format(self.known_events))
+                logger.error("Known events: {}".format(self.stored_events))
 
             if member_name not in known_participants and rsvp["response"] == "yes":
                 self.trello.add_rsvp(name=member_name, member_id=member_id, board_name=event_name)
@@ -94,15 +94,15 @@ class Bot(object):
             if newcomers:
                 logger.info("Newcomers found: {}".format(newcomers))
                 self.chat.new_rsvp(', '.join(newcomers), "yes", event_name, spots_left, channel)
-                self.known_events[event_id]["participants"] += newcomers
-                logger.debug("Participant list: {}".format(self.known_events[event_id]["participants"]))
+                self.stored_events[event_id]["participants"] += newcomers
+                logger.debug("Participant list: {}".format(self.stored_events[event_id]["participants"]))
 
             if cancels:
                 logger.info("Cancellations found: {}".format(cancels))
                 self.chat.new_rsvp(', '.join(cancels), "no", event_name, spots_left, channel)
-                self.known_events[event_id]["participants"] = [p for p in self.known_events[event_id]["participants"] if
-                                                               p not in cancels]
-                logger.debug("Participant list: {}".format(self.known_events[event_id]["participants"]))
+                self.stored_events[event_id]["participants"] = [p for p in self.stored_events[event_id]["participants"]
+                                                                if p not in cancels]
+                logger.debug("Participant list: {}".format(self.stored_events[event_id]["participants"]))
         else:
             logger.info("No changes for {}".format(event_name))
 
@@ -138,7 +138,7 @@ class Bot(object):
 
     def _all_events_info(self):
         msgs = ["Here are our next events.\n"]
-        for event in self.known_events.values():
+        for event in self.stored_events.values():
             participants = event["participants"]
             event_time = event["time"] / 1000
             date = datetime.fromtimestamp(event_time).strftime('%A %B %d at %H:%M')
@@ -155,35 +155,42 @@ class Bot(object):
 
         logger.debug("Request {}".format(request))
         logger.debug("Channel {}".format(channel))
-        logger.debug("Requested {}".format(request))
         events = self.event_names
         logger.debug("Events {}".format(events))
         event_name = process.extractOne(request, events)[0]
-        logger.debug("Chosen {}".format(event_name))
-        if table_number:
-            msgs = ["Table {} for {}".format(table_number, event_name)]
-        else:
-            msgs = ["Available tables for "]
-            msgs[0] += "*{}*".format(event_name)
+        logger.debug("Chose {}".format(event_name))
 
-        table_info = self.tables_detail(event_name)
+        table_info = self.trello.tables_detail(event_name)
+
+        tables = []
 
         for table, details in table_info.items():
-            if not table_number:
-                blurb = details["blurb"].replace('\n', '\n>')
-                players = details["players"].replace('\n', '\n>')
-                if detail:
-                    msgs.append("*{}*\n>{}{}\nJoining: *{}*".format(table.upper(), blurb, players, ', '.join(details["members"])))
-                else:
-                    msgs.append(
-                        "*{}*\n{}\nJoining: *{}*".format(table.upper(), players, ', '.join(details["members"])))
-            elif table_number and table.startswith(str(table_number)):
-                blurb = details["blurb"].replace('\n', '\n>')
-                players = details["players"].replace('\n', '\n>')
-                msgs.append("*{}*\n>{}{}\nJoining: *{}*".format(table.upper(), blurb, players,
-                                                                   ', '.join(details["members"])))
+            color = "b20000" if table.lower().endswith("full") else "#36a64f"
+            if detail and table[0].isdigit():
+                text = details["blurb"]
+                title = "Joining ({} out of {} max)".format(len(details["members"]) - 1, details["players"])
+            elif table[0].isdigit():
+                text = "_Ask *table {}* to get details for this table " \
+                       "or *detailed table status* to get details for all tables_".format(table[0])
+                title = "Joining ({} out of {} max)".format(len(details["members"]) - 1, details["players"])
+            else:
+                text = ""
+                title = "{} left".format(len(details["members"]))
+                color = ""
 
-        return '\n\n'.join(msgs)
+            attachment = {
+                "title": table.upper(),
+                "text": text,
+                "color": color,
+                "fields": [
+                    {"title": title,
+                     "value": ', '.join(details["members"])}
+                ]
+            }
+            if not table_number or table.startswith(str(table_number)):
+                tables.append(attachment)
+
+        return json.dumps(tables)
 
     def check_events(self):
         logger.info("Checking for event updates")
@@ -195,7 +202,7 @@ class Bot(object):
 
     def save_events(self):
         logger.debug("Saving events")
-        self.ds.store_events(self.known_events)
+        self.ds.store_events(self.stored_events)
 
     def monitor_events(self, sleep_time=900):
         while True:
@@ -210,8 +217,8 @@ class Bot(object):
     def read_chat(self, tasks):
         self.chat.rtm(tasks)
 
-    def respond(self, response, channel):
-        self.chat.message(response, channel)
+    def respond(self, response, channel, attachments=None):
+        self.chat.message(content=response, channel=channel, attachments=attachments)
 
     @property
     def next_event(self):
@@ -219,10 +226,7 @@ class Bot(object):
             return None
         self.storg.upcoming_events.sort(key=lambda d: d["time"])
         next_id = self.storg.upcoming_events[0]["id"]
-        return self.known_events[next_id]
-
-    def tables_detail(self, event_name):
-        return self.trello.tables_detail(event_name)
+        return self.stored_events[next_id]
 
     def table(self, event_name, table_title):
         return self.trello.table(event_name, table_title)
@@ -234,20 +238,23 @@ class Bot(object):
         meetup_username = info["name"]
         meetup_id = info["id"]
         profile_url = "https://www.meetup.com/Stockholm-Roleplaying-Guild/members/{}/".format(meetup_id)
-        return "{} is known on Meetup as *{}*: {}".format(slack_name, meetup_username, profile_url )
+        return "{} is known on Meetup as *{}*: {}".format(slack_name, meetup_username, profile_url)
 
     def conversation(self, task_queue):
         unknown_responses = self._phrases["responses"]["unknown"]
         while True:
             command, channel_id, user_id = task_queue.get()
+            attachments = None
             if command.startswith("help"):
-                response = "Hold on tight, I'm coming!"
+                response = "Hold on tight, I'm coming!\nJust kidding!\n\n{}".format(self._phrases["responses"]["help"])
             elif command.lower().startswith("table status"):
-                response = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                             request=command.split('table status')[-1])
+                response = "Available tables"
+                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                request=command.split('table status')[-1])
             elif command.lower().startswith("detailed table status"):
-                response = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                             request=command.split('table status')[-1], detail=True)
+                response = "Available tables"
+                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                request=command.split('table status')[-1], detail=True)
             elif command.lower().startswith("table"):
                 full_req = command.split('table')[-1].strip()
                 split_req = full_req.split(" ", 1)
@@ -257,8 +264,9 @@ class Bot(object):
                 else:
                     request = None
                 logger.debug("Table {}".format(table_number))
-                response = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                            request=request, detail=True, table_number=table_number)
+                response = "Details for table {}".format(table_number)
+                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                request=request, detail=True, table_number=table_number)
             elif "next event" in command.lower() and "events" not in command.lower():
                 response = self._next_event_info()
             elif "events" in command.lower():
@@ -272,7 +280,23 @@ class Bot(object):
                 response = self._phrases["responses"]["help"]
             elif "admin info" in command.lower():
                 response = self._phrases["responses"]["admin_info"]
+            elif "add table" == command.lower():
+                response = "Sure thing. Just send me a message in the following format:\n" \
+                           "add table <TABLE TITLE>: <BLURB>, Players: <MAX NUMBER OF PLAYERS>, e.g.\n" \
+                           "```add table Rat Queens (Fate): One more awesome Rat Queens adventure, Players: 5```"
+            elif command.lower().startswith("add table"):
+                response = self._add_table(command, channel_id)
             else:
                 response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
                     unknown_responses)
-            self.respond(response, channel_id)
+            self.respond(response, channel_id, attachments=attachments)
+
+    def _add_table(self, command, channel_id):
+        title, info = command.split(":", 1)
+        title = title.split("add table")[-1]
+        try:
+            board_url = self.chat.channel_topic(channel_id).strip("<").strip(">")
+        except ValueError:
+            return "I can't find the Trello board for this channel." \
+                   " Make sure the topic of this channel is the URL of the event's Trello board"
+        return self.trello.add_table(title, info, board_url)
