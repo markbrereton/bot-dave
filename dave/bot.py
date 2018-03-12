@@ -56,7 +56,7 @@ class Bot(object):
             event_date = int(event["time"]) / 1000
             event_date = datetime.fromtimestamp(event_date, tz=cet).strftime('%A %B %d %H:%M')
 
-            self.chat.new_event(event["name"], event_date, event["venue"]["name"], event["event_url"])
+            # self.chat.new_event(event["name"], event_date, event["venue"]["name"], event["event_url"])
             self.trello.create_board(event["name"], team_name=self.team_name)
             self.stored_events[event_id] = event
             self.stored_events[event_id]["participants"] = []
