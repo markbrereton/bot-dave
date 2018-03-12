@@ -243,53 +243,57 @@ class Bot(object):
     def conversation(self, task_queue):
         unknown_responses = self._phrases["responses"]["unknown"]
         while True:
-            command, channel_id, user_id = task_queue.get()
-            attachments = None
-            if command.startswith("help"):
-                response = "Hold on tight, I'm coming!\nJust kidding!\n\n{}".format(self._phrases["responses"]["help"])
-            elif command.lower().startswith("table status"):
-                response = "Available tables"
-                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                                request=command.split('table status')[-1])
-            elif command.lower().startswith("detailed table status"):
-                response = "Available tables"
-                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                                request=command.split('table status')[-1], detail=True)
-            elif command.lower().startswith("table"):
-                full_req = command.split('table')[-1].strip()
-                split_req = full_req.split(" ", 1)
-                table_number = split_req[0]
-                if len(split_req) == 2:
-                    request = split_req[1]
+            try:
+                command, channel_id, user_id = task_queue.get()
+                attachments = None
+                if command.startswith("help"):
+                    response = "Hold on tight, I'm coming!\nJust kidding!\n\n{}".format(self._phrases["responses"]["help"])
+                elif command.lower().startswith("table status"):
+                    response = "Available tables"
+                    attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                    request=command.split('table status')[-1])
+                elif command.lower().startswith("detailed table status"):
+                    response = "Available tables"
+                    attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                    request=command.split('table status')[-1], detail=True)
+                elif command.lower().startswith("table"):
+                    full_req = command.split('table')[-1].strip()
+                    split_req = full_req.split(" ", 1)
+                    table_number = split_req[0]
+                    if len(split_req) == 2:
+                        request = split_req[1]
+                    else:
+                        request = None
+                    logger.debug("Table {}".format(table_number))
+                    response = "Details for table {}".format(table_number)
+                    attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
+                                                    request=request, detail=True, table_number=table_number)
+                elif "next event" in command.lower() and "events" not in command.lower():
+                    response = self._next_event_info()
+                elif "events" in command.lower():
+                    response = self._all_events_info()
+                elif "thanks" in command.lower() or "thank you" in command.lower():
+                    response = random.choice(self._phrases["responses"]["thanks"])
+                elif "who is" in command.lower():
+                    slack_name = command.split("who is")[-1].strip("?").strip()
+                    response = self._user_info(slack_name)
+                elif command.lower().startswith("what can you do") or command.lower() == "man":
+                    response = self._phrases["responses"]["help"]
+                elif "admin info" in command.lower():
+                    response = self._phrases["responses"]["admin_info"]
+                elif "add table" == command.lower():
+                    response = "Sure thing. Just send me a message in the following format:\n" \
+                               "add table <TABLE TITLE>: <BLURB>, Players: <MAX NUMBER OF PLAYERS>, e.g.\n" \
+                               "```add table Rat Queens (Fate): One more awesome Rat Queens adventure, Players: 5```"
+                elif command.lower().startswith("add table"):
+                    response = self._add_table(command, channel_id)
                 else:
-                    request = None
-                logger.debug("Table {}".format(table_number))
-                response = "Details for table {}".format(table_number)
-                attachments = self._tables_info(channel=self.chat.channel_name(channel_id),
-                                                request=request, detail=True, table_number=table_number)
-            elif "next event" in command.lower() and "events" not in command.lower():
-                response = self._next_event_info()
-            elif "events" in command.lower():
-                response = self._all_events_info()
-            elif "thanks" in command.lower() or "thank you" in command.lower():
-                response = random.choice(self._phrases["responses"]["thanks"])
-            elif "who is" in command.lower():
-                slack_name = command.split("who is")[-1].strip("?").strip()
-                response = self._user_info(slack_name)
-            elif command.lower().startswith("what can you do") or command.lower() == "man":
-                response = self._phrases["responses"]["help"]
-            elif "admin info" in command.lower():
-                response = self._phrases["responses"]["admin_info"]
-            elif "add table" == command.lower():
-                response = "Sure thing. Just send me a message in the following format:\n" \
-                           "add table <TABLE TITLE>: <BLURB>, Players: <MAX NUMBER OF PLAYERS>, e.g.\n" \
-                           "```add table Rat Queens (Fate): One more awesome Rat Queens adventure, Players: 5```"
-            elif command.lower().startswith("add table"):
-                response = self._add_table(command, channel_id)
-            else:
-                response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
-                    unknown_responses)
-            self.respond(response, channel_id, attachments=attachments)
+                    response = self._check_for_greeting(command) if self._check_for_greeting(command) else random.choice(
+                        unknown_responses)
+                self.respond(response, channel_id, attachments=attachments)
+            except Exception as e:
+                self.chat.message("Swallowed exception at conversation: {}".format(e), self.lab_channel_id)
+                logger.error("Swallowed exception at conversation: {}".format(e))
 
     def _add_table(self, command, channel_id):
         title, info = command.split(":", 1)
